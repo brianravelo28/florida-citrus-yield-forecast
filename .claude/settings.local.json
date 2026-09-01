@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cd \"C:\\\\Users\\\\Brian\\\\Desktop\\\\Claude Projects\\\\Agriculture Project\"; Write-Host \"`n========== PROJECT DELIVERY SUMMARY ==========\" -ForegroundColor Cyan; Write-Host \"`nProject: Florida Citrus Yield Forecasting System`nStatus: COMPLETE & READY FOR DEPLOYMENT`n\" -ForegroundColor Green; Write-Host \"FILE STRUCTURE:\" -ForegroundColor Yellow; tree /F | head -50; Write-Host \"`nKEY FILES:\" -ForegroundColor Yellow; ls -File | ForEach-Object { \"  ✓ $\\($_.Name\\) \\($\\([math]::Round\\($_.Length/1KB\\)\\)KB\\)\" })",
+      "PowerShell(cd \"C:\\\\Users\\\\Brian\\\\Desktop\\\\Claude Projects\\\\Agriculture Project\"; Write-Host \"`n========== GITHUB REPOSITORY STRUCTURE ==========\" -ForegroundColor Green; Write-Host \"`nAll GitHub-ready files created:`n\"; ls -File | ForEach-Object { Write-Host \"  ✓ $\\($_.Name\\)\" }; Write-Host \"`ndocs/ directory:\"; ls docs/ -File | ForEach-Object { Write-Host \"  ✓ $_\" }; Write-Host \"`nsrc/ directory:\"; ls src/ -File | ForEach-Object { Write-Host \"  ✓ $_\" })",
+      "Bash(git init *)",
+      "Bash(git config *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'Initial commit: Florida citrus yield forecasting system *)"
+    ]
+  }
+}
