@@ -37,14 +37,11 @@ def engineer_weather_features(df_weather):
     weather_pivot.columns.name = None
     weather_pivot['month'] = weather_pivot['date'].dt.month
 
-    # Convert from tenths of mm and tenths of F to standard units
-    weather_pivot['TMAX'] = (weather_pivot['TMAX'].fillna(0) / 10.0 - 32) * 5/9  # to Celsius
-    weather_pivot['TMIN'] = (weather_pivot['TMIN'].fillna(0) / 10.0 - 32) * 5/9  # to Celsius
-    weather_pivot['PRCP'] = weather_pivot['PRCP'].fillna(0) / 10.0  # to mm
-
-    # Actually keep in Fahrenheit for citrus industry standards
-    weather_pivot['TMAX_F'] = weather_pivot['TMAX'] * 9/5 + 32
-    weather_pivot['TMIN_F'] = weather_pivot['TMIN'] * 9/5 + 32
+    # NOAA CDO v2 API with units=standard returns TMAX/TMIN already in
+    # degrees F and PRCP already in inches - no tenths decoding needed.
+    weather_pivot['TMAX_F'] = weather_pivot.get('TMAX', pd.Series(dtype=float))
+    weather_pivot['TMIN_F'] = weather_pivot.get('TMIN', pd.Series(dtype=float))
+    weather_pivot['PRCP'] = weather_pivot.get('PRCP', pd.Series(dtype=float)).fillna(0) * 25.4  # inches to mm
 
     features_by_year = []
 
@@ -53,7 +50,7 @@ def engineer_weather_features(df_weather):
 
         # Bloom season (Jan-Mar): frost days
         bloom = year_data[(year_data['month'] >= 1) & (year_data['month'] <= 3)]
-        frost_days = len(bloom[bloom['TMIN_F'] <= 0])  # 32F = 0C
+        frost_days = len(bloom[bloom['TMIN_F'] <= 32])  # standard citrus freeze threshold
 
         # Growing season (May-Aug)
         grow = year_data[(year_data['month'] >= 5) & (year_data['month'] <= 8)]
@@ -76,7 +73,7 @@ def engineer_weather_features(df_weather):
 
         features_by_year.append({
             'year': int(year),
-            'county_name': 'Polk County',
+            'county_name': 'Florida (Statewide)',
             'tmax_mean_grow': tmax_mean,
             'tmin_mean_grow': tmin_mean,
             'frost_days_bloom': frost_days,

@@ -145,9 +145,9 @@ def fit_lightgbm_wfcv(df):
     print(f"RMSE: {lgb_rmse:,.0f} lbs/acre")
     print(f"MAE: {lgb_mae:,.0f} lbs/acre")
 
-    # Feature importance
+    # Feature importance (cast numpy int32 -> native int for JSON serialization)
     feature_importance = model.feature_importance()
-    feature_importance_dict = dict(zip(feature_cols, feature_importance))
+    feature_importance_dict = dict(zip(feature_cols, (int(x) for x in feature_importance)))
     sorted_features = sorted(feature_importance_dict.items(), key=lambda x: x[1], reverse=True)
 
     print(f"\nTop 5 features (SHAP-like importance):")

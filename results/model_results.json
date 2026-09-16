@@ -1,10 +1,37 @@
 {
   "arima": {
     "model_name": "ARIMA(1,1,1)",
-    "rmse": 2104.902518838576,
-    "mae": 1683.9251652787116,
-    "forecast_2023": 31272.617088970244,
-    "forecast_2024": 31224.101969942763
+    "rmse": 5860.494778873037,
+    "mae": 5775.0282381007155,
+    "forecast_2023": 11902.248325311893,
+    "forecast_2024": 11797.808150889538
   },
-  "lightgbm": null
+  "lightgbm": {
+    "model_name": "LightGBM",
+    "rmse": 10456.524934603258,
+    "mae": 10418.548873265076,
+    "feature_importance": {
+      "tmax_mean_grow": 44,
+      "tmin_mean_grow": 42,
+      "frost_days_bloom": 19,
+      "precip_total_grow": 21,
+      "precip_rolling_30": 6,
+      "precip_rolling_60": 10,
+      "precip_rolling_90": 0,
+      "temp_variance_grow": 8,
+      "gdd_total_grow": 36,
+      "precip_deviation": 0,
+      "yield_lag1": 57,
+      "year_numeric": 42
+    },
+    "top_features": [
+      "yield_lag1",
+      "tmax_mean_grow",
+      "tmin_mean_grow",
+      "year_numeric",
+      "gdd_total_grow"
+    ],
+    "forecast_2023": 16438.91569843698,
+    "forecast_2024": 16548.182048093175
+  }
 }
