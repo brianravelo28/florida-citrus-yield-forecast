@@ -8,3 +8,4 @@ geopandas>=0.10
 shapely>=1.7
 requests>=2.26
 scikit-learn>=1.0
+gunicorn>=21.0

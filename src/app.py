@@ -397,6 +397,9 @@ def update_scenario(frost_increase_pct):
 from plotly.subplots import make_subplots
 
 
+# Expose Flask server for Gunicorn (Render, Heroku, etc.)
+server = app.server
+
 if __name__ == "__main__":
     print("[OK] Starting Dash app at http://127.0.0.1:8050")
     print("Press Ctrl+C to stop.")
