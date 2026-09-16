@@ -14,6 +14,15 @@ from pathlib import Path
 # Load data
 df_model = pd.read_csv("data/df_model.csv")
 stress_data = pd.read_csv("results/stress_indicator.csv")
+county_features = pd.read_csv("data/county_features.csv")
+COUNTY_LIST = sorted(county_features["county_name"].unique().tolist())
+COUNTY_YEARS = sorted(county_features["year"].unique().tolist())
+COUNTY_COLORS = {
+    "Polk": "#0d6efd",
+    "Hendry": "#198754",
+    "DeSoto": "#fd7e14",
+    "Highlands": "#6f42c1",
+}
 
 # Load model results
 import json
@@ -153,6 +162,69 @@ app.layout = html.Div([
                 ], style={'padding': '20px', 'backgroundColor': 'white', 'marginTop': '20px', 'borderRadius': '8px'})
 
             ], style={'padding': '20px'})
+        ]),
+
+        # ============================================
+        # TAB 4: COUNTY COMPARISON
+        # ============================================
+        dcc.Tab(label="County Comparison", value="tab-4", children=[
+            html.Div([
+                html.Div([
+                    html.P([
+                        html.Strong("Note: "),
+                        "USDA NASS does not publish county-level citrus yield or production for any "
+                        "county in any year (confirmed against every available NASS source, including "
+                        "the Census of Agriculture) - grower confidentiality rules suppress it entirely. "
+                        "The panel below shows what IS real and county-specific: local weather station "
+                        "data and Census bearing-acreage figures for Florida's top 4 citrus counties by "
+                        "acreage. No yield number is estimated or fabricated for any county."
+                    ], style={'fontSize': '13px', 'color': '#666', 'backgroundColor': '#fff9db',
+                              'padding': '15px', 'borderRadius': '8px', 'borderLeft': '4px solid ' + COLORS['warning']})
+                ], style={'marginBottom': '20px'}),
+
+                html.Div([
+                    html.Label("Counties:", style={'fontWeight': 'bold', 'marginRight': '10px'}),
+                    dcc.Checklist(
+                        id='county-checklist',
+                        options=[{'label': f' {c}', 'value': c} for c in COUNTY_LIST],
+                        value=COUNTY_LIST,
+                        inline=True,
+                        style={'display': 'inline-block'}
+                    )
+                ], style={'padding': '15px 20px', 'backgroundColor': 'white', 'borderRadius': '8px', 'marginBottom': '20px'}),
+
+                html.Div([
+                    html.H3("Frost Days During Bloom (Jan-Mar), by County", style={'marginBottom': '20px'}),
+                    dcc.Graph(id='county-frost-chart')
+                ], style={'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}),
+
+                html.Div([
+                    html.H3("Bearing Acreage Trend (real USDA Census years)", style={'marginBottom': '20px'}),
+                    dcc.Graph(id='county-acreage-chart'),
+                    html.P(
+                        "Real USDA Census of Agriculture figures (published every 5 years) - dotted "
+                        "lines connect points for readability, they are not interpolated data.",
+                        style={'fontSize': '12px', 'color': '#888', 'marginTop': '10px'}
+                    )
+                ], style={'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}),
+
+                html.Div([
+                    html.H3("Yearly Outlook", style={'marginBottom': '20px'}),
+                    html.Div([
+                        html.Label("Year:", style={'fontWeight': 'bold', 'marginRight': '10px'}),
+                        dcc.Dropdown(
+                            id='county-year-dropdown',
+                            options=[{'label': str(y), 'value': y} for y in COUNTY_YEARS],
+                            value=COUNTY_YEARS[-1],
+                            clearable=False,
+                            searchable=False,
+                            style={'width': '150px', 'display': 'inline-block', 'verticalAlign': 'middle'}
+                        )
+                    ], style={'marginBottom': '20px', 'display': 'flex', 'alignItems': 'center'}),
+                    dcc.Graph(id='county-latest-comparison')
+                ], style={'padding': '20px', 'backgroundColor': 'white', 'borderRadius': '8px'})
+
+            ], style={'padding': '20px'})
         ])
     ])
 ], style={'backgroundColor': COLORS['background'], 'minHeight': '100vh', 'fontFamily': 'Arial, sans-serif'})
@@ -258,7 +330,7 @@ def update_weather_components(tab):
     """Weather components over time."""
     fig = make_subplots(
         rows=3, cols=1,
-        subplot_titles=("Temperature (°F)", "Precipitation (mm)", "Frost Days")
+        subplot_titles=("Temperature (°F)", "Precipitation (mm)", "Frost Days During Bloom (Jan-Mar)")
     )
 
     # Temperature
@@ -330,8 +402,16 @@ def update_scenario(frost_increase_pct):
     latest = df_model.iloc[-1]
     baseline_yield = latest['yield_lbs_acre']
 
+    # Scale the slider off the 35-year historical AVERAGE frost days, not
+    # the single latest year. The latest year (and most years - median is
+    # 0 across 1990-2024) often has 0 frost days, which made "+X%" always
+    # multiply against zero and produce zero visible change regardless of
+    # slider position. The historical average (~0.77 days) gives a stable,
+    # always-nonzero reference to scale a "% worse than typical" scenario.
+    historical_avg_frost = df_model['frost_days_bloom'].mean()
+
     # Simple model: each additional frost day reduces yield by ~2000 lbs/acre
-    frost_increase = latest['frost_days_bloom'] * (frost_increase_pct / 100)
+    frost_increase = historical_avg_frost * (frost_increase_pct / 100)
     yield_loss = frost_increase * 2000
 
     scenario_yield = max(baseline_yield - yield_loss, 5000)
@@ -366,7 +446,7 @@ def update_scenario(frost_increase_pct):
 
     # Economic text
     economic_text = html.Div([
-        html.P(f"Scenario: +{frost_increase_pct}% increase in frost days during bloom"),
+        html.P(f"Scenario: +{frost_increase_pct}% frost days vs. the 1990-2024 average ({historical_avg_frost:.2f} days/year)"),
         html.P(f"Estimated frost day increase: +{frost_increase:.1f} days"),
         html.Hr(),
         html.P([
@@ -391,6 +471,149 @@ def update_scenario(frost_increase_pct):
     ])
 
     return fig, economic_text
+
+
+@app.callback(
+    Output('county-frost-chart', 'figure'),
+    Input('county-checklist', 'value')
+)
+def update_county_frost(selected_counties):
+    """Frost days by bloom season, one line per selected county."""
+    fig = go.Figure()
+
+    for county in selected_counties:
+        sub = county_features[county_features['county_name'] == county].sort_values('year')
+        fig.add_trace(go.Scatter(
+            x=sub['year'],
+            y=sub['frost_days_bloom'],
+            mode='lines+markers',
+            name=county,
+            line=dict(color=COUNTY_COLORS.get(county), width=2),
+            marker=dict(size=5)
+        ))
+
+    fig.add_annotation(
+        x=2010, y=county_features[county_features['year'] == 2010]['frost_days_bloom'].max(),
+        text="Jan 2010 FL freeze<br>(all counties hit)",
+        showarrow=True, arrowhead=2, ax=40, ay=-40,
+        font=dict(size=11, color='#666')
+    )
+
+    fig.update_layout(
+        xaxis_title="Year",
+        yaxis_title="Frost Days (Jan-Mar, TMIN <= 32°F)",
+        hovermode='x unified',
+        height=450,
+        template='plotly_white'
+    )
+    return fig
+
+
+@app.callback(
+    Output('county-acreage-chart', 'figure'),
+    Input('county-checklist', 'value')
+)
+def update_county_acreage(selected_counties):
+    """Real bearing acreage trend, Census years only, per county."""
+    fig = go.Figure()
+
+    for county in selected_counties:
+        sub = county_features[
+            (county_features['county_name'] == county) & (county_features['bearing_acres'].notna())
+        ].sort_values('year')
+        fig.add_trace(go.Scatter(
+            x=sub['year'],
+            y=sub['bearing_acres'],
+            mode='lines+markers',
+            name=county,
+            line=dict(color=COUNTY_COLORS.get(county), width=2, dash='dot'),
+            marker=dict(size=9)
+        ))
+
+    fig.update_layout(
+        xaxis_title="Census Year",
+        yaxis_title="Bearing Acres (ORANGES)",
+        hovermode='x unified',
+        height=450,
+        template='plotly_white'
+    )
+    return fig
+
+
+@app.callback(
+    Output('county-latest-comparison', 'figure'),
+    [Input('county-checklist', 'value'),
+     Input('county-year-dropdown', 'value')]
+)
+def update_county_latest(selected_counties, selected_year):
+    """Bar comparison of key indicators for a user-selected year.
+
+    Uses 3 separate subplots (not one grouped bar chart) because
+    frost days (0-14), temp (85-95F), and GDD (3800-4300) live on
+    wildly different scales - combining them in one chart made the
+    smaller-scale bars visually disappear next to GDD.
+    """
+    sub = county_features[
+        (county_features['year'] == selected_year) & (county_features['county_name'].isin(selected_counties))
+    ]
+
+    fig = make_subplots(
+        rows=1, cols=3,
+        subplot_titles=("Frost Days During Bloom (Jan-Mar)", "Avg Max Temp (°F)", "GDD (Growing Degree Days)")
+    )
+
+    counties_ordered = [c for c in selected_counties if not sub[sub['county_name'] == c].empty]
+
+    if not counties_ordered:
+        fig.update_layout(title=f"{selected_year} Snapshot — select at least one county", height=450, template='plotly_white')
+        return fig
+
+    colors = [COUNTY_COLORS.get(c) for c in counties_ordered]
+
+    frost_vals = [sub[sub['county_name'] == c]['frost_days_bloom'].values[0] for c in counties_ordered]
+    tmax_vals = [sub[sub['county_name'] == c]['tmax_mean_grow'].values[0] for c in counties_ordered]
+    gdd_vals = [sub[sub['county_name'] == c]['gdd_total_grow'].values[0] for c in counties_ordered]
+
+    # Explicit value labels on every bar so a real "0" reads as data,
+    # not as an empty/broken chart (some years genuinely have 0 frost
+    # days across all counties, e.g. 2024).
+    fig.add_trace(go.Bar(
+        x=counties_ordered, y=frost_vals,
+        text=[f"{v:.0f}" for v in frost_vals], textposition='outside',
+        marker=dict(color=colors), showlegend=False
+    ), row=1, col=1)
+
+    fig.add_trace(go.Bar(
+        x=counties_ordered, y=tmax_vals,
+        text=[f"{v:.1f}" for v in tmax_vals], textposition='outside',
+        marker=dict(color=colors), showlegend=False
+    ), row=1, col=2)
+
+    fig.add_trace(go.Bar(
+        x=counties_ordered, y=gdd_vals,
+        text=[f"{v:.0f}" for v in gdd_vals], textposition='outside',
+        marker=dict(color=colors), showlegend=False
+    ), row=1, col=3)
+
+    # Explicit headroom above the tallest bar on every panel, so the
+    # "outside" value label has room to render instead of clipping
+    # against the subplot boundary. Plotly's autorange only leaves ~5%
+    # padding above the max value, which isn't enough for outside text
+    # (confirmed: e.g. GDD max 4312 -> autorange top 4539, label cut off).
+    # Frost days panel also needs a floor for all-zero years (Plotly
+    # auto-ranges to [-1, 1] when every value is 0, hiding the axis).
+    fig.update_yaxes(range=[0, max(2, max(frost_vals) * 1.3)], row=1, col=1)
+    fig.update_yaxes(range=[0, max(tmax_vals) * 1.15], row=1, col=2)
+    fig.update_yaxes(range=[0, max(gdd_vals) * 1.15], row=1, col=3)
+
+    fig.update_layout(
+        title=f"{selected_year} Snapshot" + (
+            " — no frost recorded in any selected county" if max(frost_vals) == 0 else ""
+        ),
+        height=450,
+        template='plotly_white'
+    )
+    return fig
 
 
 # Placeholder for plotly subplots import
