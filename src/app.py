@@ -62,6 +62,20 @@ def create_kpi_card(label, value, unit="", color=COLORS['primary']):
     ], style=KPI_STYLE)
 
 
+CHART_HINT_ZOOM = "Drag to zoom into part of the chart; double-click the chart to reset the view."
+CHART_HINT_LEGEND = " Click a legend entry to hide that series; double-click it to isolate it."
+
+
+def chart_hint(legend=True):
+    """Small caption under a chart explaining zoom/legend interactions.
+
+    legend=False for single-trace charts (e.g. feature importance, the
+    scenario bar chart) that don't show a legend.
+    """
+    text = CHART_HINT_ZOOM + (CHART_HINT_LEGEND if legend else "")
+    return html.P(text, style={'margin': '4px 2px 0', 'color': '#888', 'fontSize': '13px', 'fontStyle': 'italic'})
+
+
 def get_current_year_data():
     """Get latest year data."""
     latest = df_model.iloc[-1]
@@ -103,12 +117,14 @@ app.layout = html.Div([
 
                 html.Div([
                     html.H3("Historical Yield & Forecast (1990-2025)", style={'marginBottom': '20px'}),
-                    dcc.Graph(id='yield-forecast-chart')
+                    dcc.Graph(id='yield-forecast-chart'),
+                    chart_hint()
                 ], style={'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}),
 
                 html.Div([
                     html.H3("Stress Index Timeline", style={'marginBottom': '20px'}),
-                    dcc.Graph(id='stress-timeline-chart')
+                    dcc.Graph(id='stress-timeline-chart'),
+                    chart_hint()
                 ], style={'padding': '20px', 'backgroundColor': 'white', 'borderRadius': '8px'})
 
             ], style={'padding': '20px'})
@@ -121,12 +137,14 @@ app.layout = html.Div([
             html.Div([
                 html.Div([
                     html.H3("Weather Components (Growing Season)", style={'marginBottom': '20px'}),
-                    dcc.Graph(id='weather-components-chart')
+                    dcc.Graph(id='weather-components-chart'),
+                    chart_hint()
                 ], style={'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}),
 
                 html.Div([
                     html.H3("Feature Importance (Top 10)", style={'marginBottom': '20px'}),
-                    dcc.Graph(id='feature-importance-chart')
+                    dcc.Graph(id='feature-importance-chart'),
+                    chart_hint(legend=False)
                 ], style={'padding': '20px', 'backgroundColor': 'white', 'borderRadius': '8px'})
 
             ], style={'padding': '20px'})
@@ -152,7 +170,8 @@ app.layout = html.Div([
                         ),
                     ], style={'padding': '20px', 'backgroundColor': '#f8f9fa', 'borderRadius': '8px', 'marginBottom': '20px'}),
 
-                    dcc.Graph(id='scenario-chart')
+                    dcc.Graph(id='scenario-chart'),
+                    chart_hint(legend=False)
 
                 ], style={'padding': '20px', 'backgroundColor': 'white', 'borderRadius': '8px'}),
 
@@ -195,12 +214,14 @@ app.layout = html.Div([
 
                 html.Div([
                     html.H3("Frost Days During Bloom (Jan-Mar), by County", style={'marginBottom': '20px'}),
-                    dcc.Graph(id='county-frost-chart')
+                    dcc.Graph(id='county-frost-chart'),
+                    chart_hint()
                 ], style={'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}),
 
                 html.Div([
                     html.H3("Bearing Acreage Trend (real USDA Census years)", style={'marginBottom': '20px'}),
                     dcc.Graph(id='county-acreage-chart'),
+                    chart_hint(),
                     html.P(
                         "Real USDA Census of Agriculture figures (published every 5 years) - dotted "
                         "lines connect points for readability, they are not interpolated data.",
@@ -221,7 +242,8 @@ app.layout = html.Div([
                             style={'width': '150px', 'display': 'inline-block', 'verticalAlign': 'middle'}
                         )
                     ], style={'marginBottom': '20px', 'display': 'flex', 'alignItems': 'center'}),
-                    dcc.Graph(id='county-latest-comparison')
+                    dcc.Graph(id='county-latest-comparison'),
+                    chart_hint(legend=False)
                 ], style={'padding': '20px', 'backgroundColor': 'white', 'borderRadius': '8px'})
 
             ], style={'padding': '20px'})
