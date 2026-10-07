@@ -99,3 +99,7 @@ dist/
 !requirements.txt
 !LICENSE
 !.gitignore
+
+# Local tooling
+.claude/
+.Rhistory
