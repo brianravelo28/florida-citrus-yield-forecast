@@ -1,12 +1,13 @@
 """
-Fetch real, county-specific data for Florida's top 4 citrus-producing
-counties by bearing acreage: Polk, Hendry, DeSoto, Highlands.
+Fetch real, county-specific data for four large Florida orange-producing
+counties: Polk, Hendry, DeSoto, Highlands.
 
-Unlike fetch_data.py (which sources statewide YIELD, since NASS suppresses
-county-level citrus PRODUCTION/YIELD in every year and source we checked,
+Unlike fetch_data.py (which sources statewide YIELD, since NASS publishes no
+county-level citrus PRODUCTION/YIELD in any year or source we checked,
 including the Census of Agriculture), this script pulls only what NASS
 actually publishes at the county level - bearing ACREAGE, in Census years
-(every 5 years) - plus real local daily weather from verified NOAA
+(every 5 years; some totals are withheld by USDA and left blank, never
+estimated) - plus real local daily weather from verified NOAA
 stations physically in or near each county.
 
 No yield/production numbers are fabricated here. This produces two
@@ -19,6 +20,8 @@ import requests
 import pandas as pd
 import time
 from pathlib import Path
+
+from fetch_data import FetchError, get_json
 
 NASS_KEY = "C239BF21-79EB-3B84-B273-9CE323601358"
 NOAA_TOKEN = "ytMyljSmGhKmcJeNITGlrpqFZBHopvJP"
@@ -85,7 +88,18 @@ COUNTY_STATIONS = {
 
 
 def fetch_bearing_acreage():
-    """Fetch real ORANGES bearing acreage for each county, Census years only."""
+    """Fetch ORANGES bearing acreage (all varieties combined) per county, Census years only.
+
+    Returns one row per county and Census year, with a status:
+      published - USDA published the all-varieties total.
+      withheld  - USDA withheld it ("(D)": withheld to avoid disclosing
+                  individual operations' data). bearing_acres is left blank
+                  and is never estimated.
+
+    A county-year can return several rows (ALL CLASSES plus single varieties
+    such as VALENCIA). Only the ALL CLASSES total is a county total: when it is
+    withheld, a published single variety must not be used in its place.
+    """
     print("Fetching bearing acreage (Census years, real NASS data)...")
     records = []
 
@@ -100,28 +114,37 @@ def fetch_bearing_acreage():
                 "year": year,
                 "statisticcat_desc": "AREA BEARING",
                 "unit_desc": "ACRES",
+                "class_desc": "ALL CLASSES",
+                "domain_desc": "TOTAL",
                 "format": "json",
             }
-            resp = requests.get("https://quickstats.nass.usda.gov/api/api_GET/", params=params, timeout=15)
-            if resp.status_code != 200:
-                continue
+            rows = get_json("https://quickstats.nass.usda.gov/api/api_GET/", params).get("data", [])
+            if len(rows) != 1:
+                raise FetchError(
+                    f"expected exactly one ALL CLASSES total for {county_label} {year}, got {len(rows)}"
+                )
 
-            recs = resp.json().get("data", [])
-            vals = [r for r in recs if r.get("Value") and "(D)" not in str(r.get("Value")) and "(NA)" not in str(r.get("Value"))]
-            if vals:
+            raw = str(rows[0].get("Value", "")).strip()
+            if raw == "(D)":
+                acres, status = float("nan"), "withheld"
+            else:
                 try:
-                    acres = float(str(vals[0].get("Value")).strip().replace(",", ""))
-                    records.append({
-                        "county_name": county_label,
-                        "year": int(year),
-                        "bearing_acres": acres,
-                        "data_source": "NASS_CENSUS",
-                    })
+                    acres, status = float(raw.replace(",", "")), "published"
                 except ValueError:
-                    continue
+                    raise FetchError(f"unexpected acreage value {raw!r} for {county_label} {year}")
+
+            records.append({
+                "county_name": county_label,
+                "year": int(year),
+                "bearing_acres": acres,
+                "status": status,
+                "data_source": "NASS_CENSUS",
+            })
             time.sleep(0.1)
 
-        print(f"  [OK] {county_label}: {len([r for r in records if r['county_name']==county_label])} Census-year records")
+        mine = [r for r in records if r["county_name"] == county_label]
+        n_pub = sum(r["status"] == "published" for r in mine)
+        print(f"  [OK] {county_label}: {n_pub} published, {len(mine) - n_pub} withheld")
 
     return pd.DataFrame(records)
 

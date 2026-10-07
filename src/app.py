@@ -24,6 +24,26 @@ COUNTY_COLORS = {
     "Highlands": "#6f42c1",
 }
 
+
+def _join_years(years):
+    years = [str(int(y)) for y in years]
+    return years[0] if len(years) == 1 else ", ".join(years[:-1]) + " and " + years[-1]
+
+
+# County-years where USDA withheld the Census acreage total. Shown as gaps in
+# the chart and named in its footnote; never estimated.
+_withheld = county_features[county_features["acreage_status"] == "withheld"]
+WITHHELD_NOTE = "; ".join(f"{c} {_join_years(g['year'])}" for c, g in _withheld.groupby("county_name"))
+ACREAGE_NOTE = (
+    "Real USDA Census of Agriculture figures (published every 5 years); dotted lines only "
+    "connect published points."
+    + (
+        " Gaps are totals USDA withheld (marked '(D)' in the Census, to avoid disclosing "
+        f"individual operations' data): {WITHHELD_NOTE}. They are not estimated."
+        if WITHHELD_NOTE else ""
+    )
+)
+
 # Load model results
 import json
 with open("results/model_results.json", "r") as f:
@@ -209,8 +229,9 @@ app.layout = html.Div([
                         "(checked for oranges and citrus totals, in both the survey and Census of "
                         "Agriculture programs). "
                         "The panel below shows what IS real and county-specific: local weather station "
-                        "data and Census bearing-acreage figures for Florida's top 4 citrus counties by "
-                        "acreage. No yield number is estimated or fabricated for any county."
+                        "data and Census bearing-acreage figures for four large Florida orange-producing "
+                        "counties. No yield number is estimated or fabricated for any county, and "
+                        "acreage totals USDA withheld are shown as gaps, not estimated."
                     ], style={'fontSize': '13px', 'color': '#666', 'backgroundColor': '#fff9db',
                               'padding': '15px', 'borderRadius': '8px', 'borderLeft': '4px solid ' + COLORS['warning']})
                 ], style={'marginBottom': '20px'}),
@@ -237,8 +258,7 @@ app.layout = html.Div([
                     dcc.Graph(id='county-acreage-chart'),
                     chart_hint(),
                     html.P(
-                        "Real USDA Census of Agriculture figures (published every 5 years) - dotted "
-                        "lines connect points for readability, they are not interpolated data.",
+                        ACREAGE_NOTE,
                         style={'fontSize': '12px', 'color': '#888', 'marginTop': '10px'}
                     )
                 ], style={'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}),
@@ -550,17 +570,22 @@ def update_county_frost(selected_counties):
     Input('county-checklist', 'value')
 )
 def update_county_acreage(selected_counties):
-    """Real bearing acreage trend, Census years only, per county."""
+    """Real bearing acreage trend, Census years only, per county.
+
+    Every Census year is plotted; where USDA withheld the total the value is
+    blank, so the line breaks instead of bridging the gap.
+    """
     fig = go.Figure()
 
     for county in selected_counties:
         sub = county_features[
-            (county_features['county_name'] == county) & (county_features['bearing_acres'].notna())
+            (county_features['county_name'] == county) & (county_features['acreage_status'].notna())
         ].sort_values('year')
         fig.add_trace(go.Scatter(
             x=sub['year'],
             y=sub['bearing_acres'],
             mode='lines+markers',
+            connectgaps=False,
             name=county,
             line=dict(color=COUNTY_COLORS.get(county), width=2, dash='dot'),
             marker=dict(size=9)

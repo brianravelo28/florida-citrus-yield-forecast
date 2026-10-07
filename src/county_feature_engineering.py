@@ -1,6 +1,6 @@
 """
-Per-county feature engineering for Florida's top 4 citrus counties by
-bearing acreage: Polk, Hendry, DeSoto, Highlands.
+Per-county feature engineering for four large Florida orange-producing
+counties: Polk, Hendry, DeSoto, Highlands.
 
 Produces the same weather-derived features as feature_engineering.py
 (frost days, GDD, precip patterns, thermal stability), calculated
@@ -107,11 +107,14 @@ def main():
 
     df_features = pd.concat(all_features, ignore_index=True).sort_values(["county_name", "year"])
 
-    # Merge in real acreage (Census years only - left as NaN elsewhere,
-    # not interpolated, since interpolation would be a modeled value
-    # presented next to real ones without a clear label)
-    df_final = df_features.merge(df_acreage[["county_name", "year", "bearing_acres"]],
-                                   on=["county_name", "year"], how="left")
+    # Merge in real acreage (Census years only). bearing_acres is blank when
+    # USDA withheld the total, and in non-Census years; acreage_status tells
+    # them apart ("published" / "withheld" / blank for non-Census years).
+    # Nothing is interpolated or estimated: that would be a modeled value
+    # presented next to real ones.
+    acreage = df_acreage[["county_name", "year", "bearing_acres", "status"]].rename(
+        columns={"status": "acreage_status"})
+    df_final = df_features.merge(acreage, on=["county_name", "year"], how="left")
 
     df_final.to_csv("data/county_features.csv", index=False)
     print(f"\n[OK] Saved: data/county_features.csv ({len(df_final)} rows)")
