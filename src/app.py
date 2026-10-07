@@ -76,6 +76,20 @@ def chart_hint(legend=True):
     return html.P(text, style={'margin': '4px 2px 0', 'color': '#888', 'fontSize': '13px', 'fontStyle': 'italic'})
 
 
+# Overview KPI values, computed from the data (statewide orange yield).
+_latest = df_model.iloc[-1]
+LATEST_YEAR = int(_latest['year'])
+LATEST_YIELD = float(_latest['yield_lbs_acre'])
+_last5 = df_model.tail(5)
+LAST5_AVG = float(_last5['yield_lbs_acre'].mean())
+LAST5_RANGE = f"{int(_last5['year'].min())}-{int(_last5['year'].max())}"
+_peak = df_model.loc[df_model['yield_lbs_acre'].idxmax()]
+PEAK_YEAR = int(_peak['year'])
+PEAK_YIELD = float(_peak['yield_lbs_acre'])
+LATEST_STRESS = stress_data.loc[stress_data['year'] == LATEST_YEAR, 'stress_level'].iloc[0]
+STRESS_COLORS = {'HIGH': COLORS['danger'], 'MODERATE': COLORS['warning'], 'LOW': COLORS['success']}
+
+
 def get_current_year_data():
     """Get latest year data."""
     latest = df_model.iloc[-1]
@@ -106,17 +120,17 @@ app.layout = html.Div([
         dcc.Tab(label="Overview", value="tab-1", children=[
             html.Div([
                 html.Div([
-                    html.H3("Current Status (2024)", style={'marginBottom': '20px'}),
+                    html.H3(f"Latest Status ({LATEST_YEAR}) - Florida Statewide Oranges", style={'marginBottom': '20px'}),
                     html.Div([
-                        create_kpi_card("Current Yield", 28000, "lbs/acre", COLORS['primary']),
-                        create_kpi_card("5-Year Avg", 31000, "lbs/acre", COLORS['success']),
-                        create_kpi_card("2025 Forecast", 29500, "lbs/acre", COLORS['warning']),
-                        create_kpi_card("Stress Level", "HIGH", "", COLORS['danger'])
+                        create_kpi_card(f"Latest Yield ({LATEST_YEAR})", LATEST_YIELD, "lbs/acre", COLORS['primary']),
+                        create_kpi_card(f"5-Year Avg ({LAST5_RANGE})", LAST5_AVG, "lbs/acre", COLORS['success']),
+                        create_kpi_card(f"Peak Yield ({PEAK_YEAR})", PEAK_YIELD, "lbs/acre", COLORS['warning']),
+                        create_kpi_card(f"Stress Level ({LATEST_YEAR})", LATEST_STRESS, "", STRESS_COLORS[LATEST_STRESS])
                     ], style={'display': 'flex', 'flexWrap': 'wrap', 'justifyContent': 'space-around'})
                 ], style={'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}),
 
                 html.Div([
-                    html.H3("Historical Yield & Forecast (1990-2025)", style={'marginBottom': '20px'}),
+                    html.H3("Historical Yield & 2023-24 Model Predictions (1990-2024)", style={'marginBottom': '20px'}),
                     dcc.Graph(id='yield-forecast-chart'),
                     chart_hint()
                 ], style={'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}),
@@ -191,9 +205,9 @@ app.layout = html.Div([
                 html.Div([
                     html.P([
                         html.Strong("Note: "),
-                        "USDA NASS does not publish county-level citrus yield or production for any "
-                        "county in any year (confirmed against every available NASS source, including "
-                        "the Census of Agriculture) - grower confidentiality rules suppress it entirely. "
+                        "USDA NASS does not publish county-level citrus yield or production "
+                        "(checked for oranges and citrus totals, in both the survey and Census of "
+                        "Agriculture programs). "
                         "The panel below shows what IS real and county-specific: local weather station "
                         "data and Census bearing-acreage figures for Florida's top 4 citrus counties by "
                         "acreage. No yield number is estimated or fabricated for any county."
@@ -261,7 +275,7 @@ app.layout = html.Div([
     Input('tabs', 'value')
 )
 def update_yield_forecast(tab):
-    """Yield forecast line chart with confidence bands."""
+    """Historical yield with ARIMA and LightGBM predictions for the 2023-24 holdout."""
     fig = go.Figure()
 
     # Historical data
@@ -282,7 +296,7 @@ def update_yield_forecast(tab):
             x=forecast_years,
             y=arima_values,
             mode='lines+markers',
-            name='ARIMA Forecast',
+            name='ARIMA (2023-24 holdout)',
             line=dict(color=COLORS['warning'], width=2, dash='dash'),
             marker=dict(size=8)
         ))
@@ -295,13 +309,13 @@ def update_yield_forecast(tab):
             x=forecast_years,
             y=lgb_values,
             mode='lines+markers',
-            name='LightGBM Forecast',
+            name='LightGBM (2023-24 holdout)',
             line=dict(color=COLORS['success'], width=2, dash='dash'),
             marker=dict(size=8)
         ))
 
     fig.update_layout(
-        title="Citrus Yield Trend & Forecast",
+        title="Florida Orange Yield: Actual vs. Holdout Predictions",
         xaxis_title="Year",
         yaxis_title="Yield (lbs/acre)",
         hovermode='x unified',
@@ -482,7 +496,7 @@ def update_scenario(frost_increase_pct):
         ]),
         html.Hr(),
         html.P([
-            html.Strong("County-wide impact (50,000 acres):"),
+            html.Strong("Illustrative impact (50,000 acres):"),
             html.Br(),
             f"Baseline revenue: ${baseline_revenue * acres_polk:,.0f}",
             html.Br(),

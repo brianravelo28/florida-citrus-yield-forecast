@@ -1,18 +1,24 @@
 """
-Fetch citrus yield and weather data from USDA NASS and NOAA APIs.
+Fetch Florida orange yield (USDA NASS) and central-Florida daily weather
+(NOAA GHCND) for 1990-2024.
+
+If any API call fails, the run stops with an error and writes nothing.
+There is deliberately no fallback to substitute data: a failed fetch must
+never produce files that look like real data.
 """
 
-import requests
-import pandas as pd
-from datetime import datetime
-import json
+import sys
 import time
 from pathlib import Path
-import numpy as np
 
-# API credentials (REAL - from user's USDA NASS & NOAA accounts)
+import pandas as pd
+import requests
+
+# API credentials - replace with your own free keys (see README).
 NASS_KEY = "C239BF21-79EB-3B84-B273-9CE323601358"
 NOAA_TOKEN = "ytMyljSmGhKmcJeNITGlrpqFZBHopvJP"
+
+START_YEAR, END_YEAR = 1990, 2024
 
 # Ensure data directory exists
 Path("data").mkdir(exist_ok=True)
@@ -24,6 +30,12 @@ Path("data").mkdir(exist_ok=True)
 TMAX_BOUNDS = (20.0, 110.0)
 TMIN_BOUNDS = (-5.0, 85.0)
 PRCP_BOUNDS = (0.0, 20.0)
+
+FL_ORANGE_BOX_LBS = 90  # Standard FDOC/USDA Florida orange box weight (lbs)
+
+
+class FetchError(RuntimeError):
+    """A data fetch failed. Nothing should be written when this is raised."""
 
 
 def is_plausible(datatype, value):
@@ -37,63 +49,36 @@ def is_plausible(datatype, value):
     return True
 
 
-def generate_synthetic_yield_data():
-    """Generate realistic synthetic citrus yield data for demonstration."""
-    np.random.seed(42)
-    records = []
-    base_yield = 45000
-    trend = np.linspace(0, -15000, 35)  # Declining trend (citrus crisis)
+def get_json(url, params, headers=None, attempts=3):
+    """GET and parse JSON, retrying transient failures; raise FetchError if all fail.
 
-    for i, year in enumerate(range(1990, 2025)):
-        noise = np.random.normal(0, 2000)
-        yield_val = base_yield + trend[i] + noise
-        records.append({
-            "year": str(year),
-            "county_name": "Polk County",
-            "Value": str(max(15000, yield_val))
-        })
-    return records
-
-
-def generate_synthetic_weather_data():
-    """Generate realistic synthetic weather data for demonstration."""
-    np.random.seed(42)
-    records = []
-    stations = ["Lakeland Linder", "Tampa International", "Orlando Executive", "Sebring"]
-
-    for year in range(1990, 2025):
-        for month in range(1, 13):
-            for station in stations:
-                day = 15
-                date_str = f"{year}-{month:02d}-{day:02d}"
-
-                tmax = int(np.random.normal(82, 8) * 10)
-                tmin = int(np.random.normal(65, 8) * 10)
-                prcp = int(abs(np.random.normal(3, 5)))
-
-                records.extend([
-                    {"date": date_str, "datatype": "TMAX", "value": str(tmax), "station_name": station},
-                    {"date": date_str, "datatype": "TMIN", "value": str(tmin), "station_name": station},
-                    {"date": date_str, "datatype": "PRCP", "value": str(prcp), "station_name": station}
-                ])
-    return records
-
-
-FL_ORANGE_BOX_LBS = 90  # Standard FDOC/USDA Florida orange box weight (lbs)
+    Error text deliberately omits the request URL: requests' own messages
+    include it, and the NASS key travels in the query string.
+    """
+    reason = "unknown error"
+    for attempt in range(1, attempts + 1):
+        try:
+            response = requests.get(url, params=params, headers=headers, timeout=30)
+            response.raise_for_status()
+            return response.json()
+        except requests.HTTPError as e:
+            reason = f"HTTP {e.response.status_code}"
+        except (requests.RequestException, ValueError) as e:
+            reason = type(e).__name__
+        if attempt < attempts:
+            time.sleep(2 ** attempt)
+    raise FetchError(f"{url} failed after {attempts} attempts ({reason})")
 
 
 def fetch_nass_yield():
     """Fetch FL statewide orange yield from USDA NASS (1990-2024).
 
-    County-level citrus YIELD/PRODUCTION is not published by NASS
-    (grower confidentiality suppression - county level only has AREA
-    stats). Real yield data is only available at STATE level, reported
-    in BOXES/ACRE, which we convert to LB/ACRE using the standard FL
-    orange box weight (90 lbs/box).
+    County-level citrus YIELD/PRODUCTION is not published by NASS (county
+    level only has AREA statistics). Yield is only available at STATE
+    level, reported in BOXES/ACRE, which we convert to LB/ACRE using the
+    standard FL orange box weight (90 lbs/box).
     """
     print("Fetching USDA NASS Florida orange yield data...")
-
-    url = "https://quickstats.nass.usda.gov/api/api_GET/"
 
     params = {
         "key": NASS_KEY,
@@ -104,59 +89,49 @@ def fetch_nass_yield():
         "unit_desc": "BOXES / ACRE",
         "class_desc": "ALL CLASSES",
         "util_practice_desc": "ALL UTILIZATION PRACTICES",
-        "year__GE": "1990",
-        "year__LE": "2024",
-        "format": "json"
+        "year__GE": str(START_YEAR),
+        "year__LE": str(END_YEAR),
+        "format": "json",
     }
+    data = get_json("https://quickstats.nass.usda.gov/api/api_GET/", params)
 
-    try:
-        response = requests.get(url, params=params, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-    except requests.exceptions.HTTPError as e:
-        print(f"  [!] API Error: {e}")
-        print(f"  URL: {response.url}")
-        print(f"  Status: {response.status_code}")
-        print("\n  NOTE: Using synthetic data for demonstration.")
-        data = {"data": generate_synthetic_yield_data()}
-    except Exception as e:
-        print(f"  [!] Connection error: {e}")
-        print("  NOTE: Using synthetic data for demonstration.")
-        data = {"data": generate_synthetic_yield_data()}
-
-    if "data" not in data or not data["data"]:
-        print("No yield data returned")
-        return pd.DataFrame()
+    rows = data.get("data")
+    if not rows:
+        raise FetchError(f"NASS returned no yield records ({data.get('error', 'no error message')})")
 
     records = []
-    for row in data["data"]:
-        val = row.get("Value")
-        # Skip suppressed/unavailable data
-        if val in (None, "", "(D)", "(NA)", "(S)", "(Z)"):
+    for row in rows:
+        val = str(row.get("Value", "")).strip()
+        # Skip suppressed/unavailable values
+        if val in ("", "(D)", "(NA)", "(S)", "(Z)"):
             continue
-
         try:
-            boxes_per_acre = float(str(val).replace(",", ""))
             records.append({
                 "county_name": "Florida (Statewide)",
                 "year": int(row.get("year")),
-                "yield_lbs_acre": boxes_per_acre * FL_ORANGE_BOX_LBS,
-                "data_source": "NASS"
+                "yield_lbs_acre": float(val.replace(",", "")) * FL_ORANGE_BOX_LBS,
+                "data_source": "NASS",
             })
         except (ValueError, TypeError):
             continue
 
-    df = pd.DataFrame(records).sort_values(["county_name", "year"]).reset_index(drop=True)
-    df = df[(df["year"] >= 1990) & (df["year"] <= 2024)].reset_index(drop=True)
+    df = pd.DataFrame(records)
+    df = df[(df["year"] >= START_YEAR) & (df["year"] <= END_YEAR)]
+    df = df.sort_values("year").reset_index(drop=True)
+
+    missing = sorted(set(range(START_YEAR, END_YEAR + 1)) - set(df["year"]))
+    if missing:
+        raise FetchError(f"NASS yield is missing years: {missing}")
+
     print(f"  [OK] Fetched {len(df)} yield records")
     return df
 
 
 def fetch_noaa_weather():
-    """Fetch weather data from NOAA CDO for Florida (1990-2024)."""
+    """Fetch daily TMAX/TMIN/PRCP from NOAA CDO v2 for central Florida stations."""
     print("Fetching NOAA weather data...")
 
-    # Real NCEI/GHCND airport station IDs, verified to have TMAX/TMIN/PRCP.
+    # GHCND airport station IDs, verified to return TMAX/TMIN/PRCP.
     # Lakeland Linder is physically inside Polk County; Tampa and Orlando
     # are the nearest major hubs (all three cover 1990-2024 continuously).
     # Sebring only has data from 2007-12-09 onward, but is included anyway
@@ -175,7 +150,6 @@ def fetch_noaa_weather():
     headers = {"token": NOAA_TOKEN}
 
     all_weather = []
-    any_success = False
 
     for station_name, station_id in stations.items():
         print(f"  Fetching {station_name} ({station_id})...")
@@ -183,7 +157,7 @@ def fetch_noaa_weather():
         station_rejected = 0
 
         # CDO v2 requires <1 year per request, so loop year by year
-        for year in range(1990, 2025):
+        for year in range(START_YEAR, END_YEAR + 1):
             offset = 1
             while True:
                 params = {
@@ -196,15 +170,10 @@ def fetch_noaa_weather():
                     "limit": 1000,
                     "offset": offset,
                 }
+                data = get_json(url, params, headers=headers)
 
-                try:
-                    response = requests.get(url, headers=headers, params=params, timeout=30)
-                    response.raise_for_status()
-                    data = response.json()
-                except Exception as e:
-                    print(f"    [!] Error fetching {station_name} {year}: {e}")
-                    break
-
+                # An empty result is legitimate (e.g. Sebring before 2007);
+                # a failed request is not, and raised above.
                 results = data.get("results", [])
                 for record in results:
                     try:
@@ -223,9 +192,8 @@ def fetch_noaa_weather():
                         "date": record.get("date", "")[:10],
                         "datatype": datatype,
                         "value": value,
-                        "data_source": "NOAA"
+                        "data_source": "NOAA",
                     })
-                    any_success = True
 
                 station_count += len(results)
                 total_count = data.get("metadata", {}).get("resultset", {}).get("count", 0)
@@ -240,27 +208,17 @@ def fetch_noaa_weather():
         rejected_note = f", {station_rejected} rejected (implausible)" if station_rejected else ""
         print(f"    [OK] {station_name}: {station_count - station_rejected} records{rejected_note}")
 
-    if not any_success:
-        print("  [!] NOAA API failed. Using synthetic data for demonstration.")
-        synthetic = generate_synthetic_weather_data()
-        all_weather = []
-        for record in synthetic:
-            all_weather.append({
-                "station_id": "SYNTH",
-                "station_name": record.get("station_name"),
-                "date": record.get("date"),
-                "datatype": record.get("datatype"),
-                "value": float(record.get("value", 0)),
-                "data_source": "SYNTHETIC"
-            })
+    if not all_weather:
+        raise FetchError("NOAA returned no weather records")
 
     df = pd.DataFrame(all_weather)
 
-    if not df.empty:
-        print(f"  [OK] Total weather records: {len(df)}")
-    else:
-        print("  [!] No weather data retrieved")
+    years_present = set(pd.to_datetime(df["date"]).dt.year)
+    missing = sorted(set(range(START_YEAR, END_YEAR + 1)) - years_present)
+    if missing:
+        raise FetchError(f"NOAA weather has no data for years: {missing}")
 
+    print(f"  [OK] Total weather records: {len(df)}")
     return df
 
 
@@ -269,42 +227,41 @@ def main():
     print("CITRUS YIELD FORECASTING - DATA FETCHING")
     print("=" * 60)
 
-    # Fetch data
-    df_yield = fetch_nass_yield()
-    df_weather = fetch_noaa_weather()
+    # Fetch everything first; write only if every fetch succeeded.
+    try:
+        df_yield = fetch_nass_yield()
+        df_weather = fetch_noaa_weather()
+    except FetchError as e:
+        print(f"\n[FAILED] {e}")
+        print("Nothing was written; existing data files are unchanged.")
+        sys.exit(1)
 
-    # Save raw data
-    if not df_yield.empty:
-        df_yield.to_csv("data/nass_yield.csv", index=False)
-        print(f"\n[OK] Saved: data/nass_yield.csv")
-
-    if not df_weather.empty:
-        df_weather.to_csv("data/noaa_weather.csv", index=False)
-        print(f"[OK] Saved: data/noaa_weather.csv")
+    df_yield.to_csv("data/nass_yield.csv", index=False)
+    print(f"\n[OK] Saved: data/nass_yield.csv")
+    df_weather.to_csv("data/noaa_weather.csv", index=False)
+    print(f"[OK] Saved: data/noaa_weather.csv")
 
     # Print schemas
     print("\n" + "=" * 60)
     print("DATA SCHEMAS")
     print("=" * 60)
 
-    if not df_yield.empty:
-        print("\nYIELD DATA (NASS):")
-        print(f"  Shape: {df_yield.shape}")
-        print(f"  Columns: {list(df_yield.columns)}")
-        print(f"  Year range: {df_yield['year'].min()} - {df_yield['year'].max()}")
-        print(f"  Yield range: {df_yield['yield_lbs_acre'].min():.0f} - {df_yield['yield_lbs_acre'].max():.0f} lbs/acre")
-        print(f"\n  First 5 rows:")
-        print(df_yield.head().to_string(index=False))
+    print("\nYIELD DATA (NASS):")
+    print(f"  Shape: {df_yield.shape}")
+    print(f"  Columns: {list(df_yield.columns)}")
+    print(f"  Year range: {df_yield['year'].min()} - {df_yield['year'].max()}")
+    print(f"  Yield range: {df_yield['yield_lbs_acre'].min():.0f} - {df_yield['yield_lbs_acre'].max():.0f} lbs/acre")
+    print(f"\n  First 5 rows:")
+    print(df_yield.head().to_string(index=False))
 
-    if not df_weather.empty:
-        print("\n\nWEATHER DATA (NOAA):")
-        print(f"  Shape: {df_weather.shape}")
-        print(f"  Columns: {list(df_weather.columns)}")
-        print(f"  Date range: {df_weather['date'].min()} - {df_weather['date'].max()}")
-        print(f"  Data types: {df_weather['datatype'].unique().tolist()}")
-        print(f"  Stations: {df_weather['station_name'].nunique()} unique")
-        print(f"\n  First 5 rows:")
-        print(df_weather.head().to_string(index=False))
+    print("\n\nWEATHER DATA (NOAA):")
+    print(f"  Shape: {df_weather.shape}")
+    print(f"  Columns: {list(df_weather.columns)}")
+    print(f"  Date range: {df_weather['date'].min()} - {df_weather['date'].max()}")
+    print(f"  Data types: {df_weather['datatype'].unique().tolist()}")
+    print(f"  Stations: {df_weather['station_name'].nunique()} unique")
+    print(f"\n  First 5 rows:")
+    print(df_weather.head().to_string(index=False))
 
     print("\n" + "=" * 60)
     print("Next: Run src/feature_engineering.py to merge & engineer features")

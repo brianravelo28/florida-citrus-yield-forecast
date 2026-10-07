@@ -59,8 +59,9 @@ NASS_COUNTIES = {
 
 # Verified-working NOAA GHCND stations per county (tested directly against
 # the /data endpoint across multiple decades - station catalog metadata
-# alone is not reliable, e.g. Bartow and Clewiston are registered stations
-# that return zero actual records).
+# alone is not reliable, e.g. Bartow is a registered station that returns
+# zero observations in every year tested). Clewiston (USC00081654) is a
+# usable Hendry County station for 1990-2003 that is not currently included.
 COUNTY_STATIONS = {
     "Polk": {
         "Lakeland Linder": "USW00012883",
