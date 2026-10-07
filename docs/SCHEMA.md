@@ -31,8 +31,11 @@ One row per station, day, and variable.
 |---|---|
 | `county_name` | Polk, Hendry, DeSoto, Highlands |
 | `year` | Census year: 2002, 2007, 2012, 2017, 2022 |
-| `bearing_acres` | Orange bearing acres (USDA Census of Agriculture) |
+| `bearing_acres` | Orange bearing acres, all varieties combined (USDA Census of Agriculture). **Blank when USDA withheld the total** |
+| `status` | `published` (16 rows) or `withheld` (4 rows: Hendry 2002 and 2007, DeSoto 2012, Highlands 2022). `withheld` means the Census marked the total `(D)`: withheld to avoid disclosing individual operations' data |
 | `data_source` | `NASS_CENSUS` |
+
+Withheld values are never estimated. For those four rows USDA still published one single variety, which is not a county total and is not used (Hendry 2002 and 2007 and Highlands 2022: Valencia only; DeSoto 2012: Mid & Navel only).
 
 ### `data/county_weather.csv` - 281,383 rows
 
@@ -56,9 +59,9 @@ Same layout as `noaa_weather.csv`, plus a leading `county_name` column (7 column
 | `year_numeric` | Calendar year |
 | `log_yield` | `log(1 + yield_lbs_acre)` (model target) |
 
-### `data/county_features.csv` - 140 rows (4 counties x 35 years) x 13 columns
+### `data/county_features.csv` - 140 rows (4 counties x 35 years) x 14 columns
 
-`county_name`, `year`, the same weather features as above (without lag/trend/target columns; `precip_deviation` is relative to that county's own 1990-2024 mean), and `bearing_acres` (populated only in the five Census years, otherwise empty - never interpolated). Too few observation days exist for the rolling windows in two county-years, so `precip_rolling_60` is NaN for DeSoto 1993 and `precip_rolling_90` is NaN for DeSoto 1993 and Hendry 2021.
+`county_name`, `year`, the same weather features as above (without lag/trend/target columns; `precip_deviation` is relative to that county's own 1990-2024 mean), `bearing_acres` (populated only for published Census totals; blank for withheld totals and for non-Census years - never interpolated), and `acreage_status` (`published`, `withheld`, or blank for non-Census years, so withheld values can be told apart from years with no Census). Too few observation days exist for the rolling windows in two county-years, so `precip_rolling_60` is NaN for DeSoto 1993 and `precip_rolling_90` is NaN for DeSoto 1993 and Hendry 2021.
 
 ## Results
 

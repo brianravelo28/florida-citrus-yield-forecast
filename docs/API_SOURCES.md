@@ -24,6 +24,8 @@ Things to know:
 - **Commodity names must match exactly.** There is no plain `CITRUS`; use `ORANGES` or `CITRUS TOTALS`. List valid values with `/api/get_param_values/?key=...&param=commodity_desc`.
 - **The value field is `Value` (capital V).** Reading lowercase `value` silently yields nothing. Suppression codes such as `(D)` can arrive padded with whitespace.
 - **Citrus yield and production exist only at state level.** County-level rows for oranges and citrus totals cover area statistics only, in both the survey and Census programs. The only yield unit is `BOXES / ACRE` (no `LB / ACRE`), converted here at 90 lb/box.
+- **One county-year returns several rows.** Besides `class_desc=ALL CLASSES` there are single-variety rows (`VALENCIA`, `MID & NAVEL`) and other domain rows, and their order is not guaranteed. Always filter `class_desc=ALL CLASSES` and `domain_desc=TOTAL`; taking "the first published row" can silently return a single variety that looks like a county total (this happened in an earlier version of this project and was fixed).
+- **`(D)` means withheld**, not zero or missing: NASS withholds the value to avoid disclosing individual operations' data. A total can be `(D)` while a single variety under it is published.
 - **County names follow NASS spelling:** DeSoto County is `DE SOTO`; `DESOTO` returns HTTP 400.
 - **An invalid parameter combination returns HTTP 400** (`bad request - invalid query`) without saying which parameter is wrong. Narrow the query to find it.
 

@@ -2,16 +2,16 @@
 
 ![Florida Citrus Yield Forecasting dashboard](docs/screenshot.png)
 
-An end-to-end pipeline and interactive dashboard that pulls real USDA NASS yield data and NOAA weather observations, engineers agronomic weather features, benchmarks an ARIMA baseline against LightGBM, and compares Florida's top four citrus counties.
+An end-to-end pipeline and interactive dashboard that pulls real USDA NASS yield data and NOAA weather observations, engineers agronomic weather features, benchmarks an ARIMA baseline against LightGBM, and compares four large Florida orange-producing counties.
 
 **Live dashboard:** <https://florida-citrus-yield-forecast.onrender.com/> (free tier - the first load after idle can take about 40 seconds)
 
-> **Scope note.** USDA NASS does not publish county-level citrus *yield* or *production* (checked for oranges and citrus totals, in both the survey and Census of Agriculture programs; production is published at state level only). The forecasting models therefore target **Florida statewide orange yield**. County-level analysis (Polk, Hendry, DeSoto, Highlands - the top four by 2022 bearing acreage) is limited to what is actually published or measurable: Census bearing acreage and local weather. **No county yield is estimated or fabricated anywhere in this project.**
+> **Scope note.** USDA NASS does not publish county-level citrus *yield* or *production* (checked for oranges and citrus totals, in both the survey and Census of Agriculture programs; production is published at state level only). The forecasting models therefore target **Florida statewide orange yield**. County-level analysis (Polk, Hendry, DeSoto, Highlands - four large orange-producing counties; see [Missing and withheld data](#missing-and-withheld-data)) is limited to what is actually published or measurable: Census bearing acreage and local weather. **No county yield is estimated or fabricated anywhere in this project.**
 
 ## Headline findings
 
 - **Florida orange yield fell 87% from its 2004 peak (38,520 lb/acre) to its 2023 low (5,130 lb/acre).** 2024 recovered slightly to 7,020.
-- **Bearing orange acreage in the top four counties fell 41% between the 2002 and 2022 Censuses** (301,305 to 176,489 acres). Highlands lost 64%, Polk 46%, DeSoto 37%; Hendry rose to 94,267 acres in 2012 before falling back.
+- **Bearing orange acreage fell 37% to 47% in every county, measured across each county's published Census totals:** Polk -46.5% (102,295 to 54,692 acres, 2002-2022), DeSoto -37.3% (67,394 to 42,234, 2002-2022), Hendry -44.7% (94,267 to 52,114, 2012-2022), Highlands -46.3% (75,984 to 40,799, 2002-2017). The periods differ because USDA withheld some totals (see [Missing and withheld data](#missing-and-withheld-data)).
 - **Both models failed to anticipate the 2023-24 collapse.** On a two-year holdout, ARIMA scored RMSE 5,860 and LightGBM 10,457 lb/acre - both over-predicted heavily (see [Model results](#model-results)). The collapse sits below anything in the 1990-2022 training window (minimum 11,250 in 2018), which tree models cannot extrapolate to.
 - **Frost days were not a leading predictor** in the fitted model (7th of 12 by split count); lagged yield, temperature, GDD, and the trend term all ranked above it.
 - **Frost exposure differs sharply by county.** Highlands averages 2.4 bloom-season frost days per year (max 14), versus 0.8 for Polk. 2010 is the worst frost year in all four counties (tied with 1996 and 2001 in DeSoto), consistent with the January 2010 Florida freeze.
@@ -22,7 +22,7 @@ An end-to-end pipeline and interactive dashboard that pulls real USDA NASS yield
 |---|---|---|
 | Statewide orange yield | USDA NASS QuickStats (`api_GET`) | `ORANGES`, `YIELD`, `BOXES / ACRE`, all classes, state level, 1990-2024 (35 rows). Converted to lb/acre at 90 lb/box, the standard Florida orange box weight. |
 | Daily weather (central Florida) | NOAA CDO v2 `/data`, GHCND | TMAX, TMIN, PRCP from Lakeland Linder, Tampa International, Orlando Executive, and Sebring (Sebring only from Dec 2007). 106,289 daily records. |
-| County bearing acreage | USDA Census of Agriculture | Oranges, 2002/2007/2012/2017/2022, four counties (20 rows). Published every five years; never interpolated. |
+| County bearing acreage | USDA Census of Agriculture | Oranges, all varieties combined, 2002/2007/2012/2017/2022, four counties: 20 county-years, of which 16 are published totals and 4 are withheld by USDA and left blank. Published every five years; never interpolated. |
 | County daily weather | NOAA CDO v2 `/data`, GHCND | Two or more verified stations per county, 1990-2024. 281,383 daily records. |
 
 Notes on data handling:
@@ -30,6 +30,18 @@ Notes on data handling:
 - NOAA station IDs were verified by querying actual observations across decades, not by trusting the station catalog (for example, Bartow Municipal is registered but returns no records).
 - A physically-motivated outlier filter rejects sensor errors (TMAX outside 20-110 F, TMIN outside -5-85 F, PRCP outside 0-20 in). It removed 12 of 281,395 county records (e.g. a 115 F daily high, 101 F daily lows) and none of the state-level records.
 - Weather features for the statewide model come from the four central-Florida stations above, averaged per day. This is a proxy for statewide conditions, not a statewide measurement.
+
+## Missing and withheld data
+
+The project reports what USDA and NOAA actually publish and shows gaps where they don't. Nothing is estimated, averaged, or interpolated to fill a gap: a filled-in value would be a modeled number sitting beside measured ones, and for withheld values there is nothing to check it against.
+
+| Case | What it means here |
+|---|---|
+| **Not published** | County-level citrus yield, production, and sales have no records at all in the NASS data checked (oranges and citrus totals, survey and Census programs). The models therefore target statewide yield. |
+| **Withheld by USDA** | The Census marks four county-year acreage totals "(D)", withheld to avoid disclosing individual operations' data: Hendry 2002 and 2007, DeSoto 2012, Highlands 2022. They are blank in the data (`status = withheld`) and appear as gaps in the dashboard chart. In each case USDA still published one orange variety (e.g. Highlands 2022: Valencia, 27,449 acres) but not the all-varieties total; those partial figures are not county totals and are not used. |
+| **Gaps on our side** | Days missing from a weather station's record (see [Known limitations](#known-limitations)). |
+
+**Why these four counties.** Polk, Hendry, DeSoto, and Highlands were chosen from the project's initial list of seven counties as large orange producers. Among counties with published 2022 totals, Polk (54,692 acres), Hendry (52,114), and DeSoto (42,234) rank first to third, and Hardee (37,623, not on the initial list) ranks fourth. Highlands' 2022 total is withheld, so its rank that year cannot be determined; it is kept for its large published totals through 2017 and because it has the highest bloom-season frost exposure of the four.
 
 ## Pipeline
 
@@ -123,15 +135,16 @@ Four-tab Plotly Dash app (`src/app.py`), with zoom/legend interaction hints unde
 
 1. **Overview** - KPI cards computed from the data (latest yield, 5-year average, peak yield, latest stress level), historical yield with the ARIMA and LightGBM holdout predictions for 2023-24, and the stress-score timeline.
 2. **Weather Analysis** - temperature, precipitation, and bloom-season frost-day time series; top-10 LightGBM feature importance.
-3. **Scenarios** - slider for a 0-50% increase in frost days relative to the 1990-2024 average (0.77 days/year). Illustrative only: it assumes 2,000 lb/acre lost per additional frost day (an assumption, not a fitted coefficient), $0.45/lb, and 50,000 acres. At +50%, yield goes from 7,020 to 6,249 lb/acre, about $17.4M in lost revenue.
-4. **County Comparison** - county checklist; bloom-season frost days by county; Census bearing-acreage trends; and a **Yearly Outlook** panel (year dropdown) comparing frost days, mean max temperature, and GDD across the selected counties.
+3. **Scenarios** - slider for a 0-50% increase in frost days relative to the 1990-2024 average (0.77 days/year). Illustrative only: it assumes 2,000 lb/acre lost per additional frost day (an assumption, not a fitted coefficient), $0.45/lb, and a county-sized 50,000 acres at the statewide average yield (see [Known limitations](#known-limitations)). At +50%, yield goes from 7,020 to 6,249 lb/acre, about $17.4M in lost revenue.
+4. **County Comparison** - county checklist; bloom-season frost days by county; Census bearing-acreage trends (withheld totals shown as gaps, with a footnote naming them); and a **Yearly Outlook** panel (year dropdown) comparing frost days, mean max temperature, and GDD across the selected counties.
 
 ## Known limitations
 
 - **Yield is statewide; weather is central Florida.** The statewide yield model uses four central-Florida stations as a proxy.
 - **Two-year holdout.** Reported errors rest on two test points. There is no rolling-origin cross-validation (`fit_lightgbm_wfcv` is named for it but fits a single split).
 - **The 2023-24 collapse is unexplained by the features.** Citrus greening (HLB) and hurricane damage are not modelled.
-- **Scenario tab mixes scopes.** It applies the statewide per-acre yield to a 50,000-acre figure, so the dollar impact is illustrative.
+- **Scenario dollars are a stylized example, not a county estimate.** USDA publishes no county-level yield, so the only yield available is the statewide average (7,020 lb/acre in 2024). To make the dollar impact tangible, the scenario applies that average to a fixed 50,000 acres - about the size of the two largest orange counties with published Census totals (Polk 54,692 and Hendry 52,114 bearing acres in 2022) - and asks what a county-sized grove area would lose if it yielded at the state average and frost days rose. This rests on an assumption that cannot be tested here: that a county yields roughly the state average. The 50,000-acre figure is a fixed input in the code rather than computed from the data, and the 2,000 lb/acre-per-frost-day loss and $0.45/lb price are assumptions too. Acreage only scales the dollar total (the per-acre change does not depend on it), so read the dollar figure as a sense of scale, not a forecast.
+- **Some county acreage totals are withheld by USDA** (4 of 20), so county acreage trends cover different periods. See [Missing and withheld data](#missing-and-withheld-data).
 - **County precipitation has gaps.** Missing precipitation days are counted as zero rain. The statewide series is fully covered, but 19 of 140 county-years have incomplete May-Aug precipitation and three (Highlands 2022, DeSoto 1990 and 1993) have under 40 observed days, so their precipitation features are unreliable.
 - **Station coverage varies.** Sebring covers only Dec 2007 onward, and county stations have different start and end dates (see `docs/API_SOURCES.md`).
 

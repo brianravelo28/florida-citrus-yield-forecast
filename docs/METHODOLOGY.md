@@ -36,9 +36,13 @@ What the code does and why. Results live in the [README](../README.md) so they h
 
 `src/fetch_county_data.py` and `src/county_feature_engineering.py` repeat the weather aggregation per county using each county's own stations (`docs/API_SOURCES.md`). Precipitation deviation is relative to each county's own mean. Bearing acreage comes from the Census of Agriculture (every five years) and is left empty in other years.
 
+**Withheld acreage.** Four of the 20 county-year totals are withheld by USDA (marked `(D)`): Hendry 2002 and 2007, DeSoto 2012, Highlands 2022. They are kept as blank rows with `status = withheld`, plotted as gaps, and named in the chart footnote, which is generated from the data. They are not estimated: a modeled value would sit beside measured ones, and since USDA withheld exactly these numbers there is nothing to validate an estimate against. Filling them would also be inconsistent: three of the four gaps fall at the start or end of a county's series (Hendry 2002 and 2007, Highlands 2022), which would require extrapolation rather than interpolation. For those four rows USDA published a single orange variety instead (e.g. Highlands 2022: Valencia, 27,449 acres); that is not a county total, so it is not used. Trend statements therefore use only each county's published totals (Polk 2002-2022, DeSoto 2002-2022, Hendry 2012-2022, Highlands 2002-2017).
+
+**County selection.** The four counties were chosen from the project's initial seven-county list. Among counties with published 2022 totals, Polk, Hendry, and DeSoto rank first to third and Hardee (37,623 acres, not on the initial list) ranks fourth; Highlands' 2022 total is withheld, so its rank that year is unknown.
+
 ## Scenario tab
 
-Illustrative, not estimated from data: the slider scales the 1990-2024 average frost days (0.77/yr), each added frost day is assumed to cost 2,000 lb/acre, and dollars use $0.45/lb on 50,000 acres. The 2,000 lb/acre figure is an assumption, not a fitted coefficient, and a statewide per-acre yield is applied to a county-sized acreage.
+Illustrative, not estimated from data: the slider scales the 1990-2024 average frost days (0.77/yr), each added frost day is assumed to cost 2,000 lb/acre, and dollars use $0.45/lb on 50,000 acres. The framing is "what would a county-sized grove area lose if it yielded at the statewide average?": county yield is unpublished, so the statewide average stands in for it, and 50,000 acres approximates the largest counties with published totals (Polk 54,692, Hendry 52,114 bearing acres in 2022). The assumption that a county yields about the state average cannot be tested. The 2,000 lb/acre figure is an assumption, not a fitted coefficient, and the acreage is a fixed input that only scales the dollar total.
 
 ## Reproducibility
 
