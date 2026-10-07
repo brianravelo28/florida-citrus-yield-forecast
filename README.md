@@ -1,5 +1,7 @@
 # Florida Citrus Yield Forecasting
 
+![Florida Citrus Yield Forecasting dashboard](docs/screenshot.png)
+
 An end-to-end pipeline and interactive dashboard that pulls real USDA NASS yield data and NOAA weather observations, engineers agronomic weather features, benchmarks an ARIMA baseline against LightGBM, and compares Florida's top four citrus counties.
 
 **Live dashboard:** <https://florida-citrus-yield-forecast.onrender.com/> (free tier - the first load after idle can take about 40 seconds)
