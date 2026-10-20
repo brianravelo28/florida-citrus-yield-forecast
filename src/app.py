@@ -21,6 +21,10 @@ COUNTY_YEARS = sorted(county_features["year"].unique().tolist())
 # Metrics shown in the Yearly Outlook panel. Years where a county's weather was
 # incomplete are NA ("missing"), not zero. The panel opens on the latest year in
 # which every county has all three metrics, so it doesn't start mostly "missing".
+# One primary NOAA station per county (see src/fetch_county_data.py).
+COUNTY_STATION_NOTE = ("Stations: Polk - Lakeland 2; Hendry - Moore Haven Lock 1 (in neighboring Glades County); DeSoto - Arcadia "
+                       "(records end April 2021); Highlands - Archbold Biological Station, a notably "
+                       "cold site.")
 OUTLOOK_METRICS = ["frost_days_bloom", "tmax_mean_grow", "gdd_total_grow"]
 _n_complete = county_features.groupby("year").apply(
     lambda g: int(g[OUTLOOK_METRICS].notna().all(axis=1).sum()))
@@ -149,7 +153,11 @@ app.layout = html.Div([
         dcc.Tab(label="Overview", value="tab-1", children=[
             html.Div([
                 html.Div([
-                    html.H3(f"Latest Status ({LATEST_YEAR}) - Florida Statewide Oranges", style={'marginBottom': '20px'}),
+                    html.H3(f"Latest Status ({LATEST_YEAR}) - Florida Statewide Oranges", style={'marginBottom': '8px'}),
+                    html.P(html.I("Yield is published only statewide. Florida oranges are grown mostly in the central and "
+                                  "southern citrus belt, and the weather inputs come from two NOAA stations in that "
+                                  "region (Tampa and Archbold), a regional proxy rather than a statewide measurement."),
+                           style={'fontSize': '12px', 'color': '#888', 'marginBottom': '20px'}),
                     html.Div([
                         create_kpi_card(f"Latest Yield ({LATEST_YEAR})", LATEST_YIELD, "lbs/acre", COLORS['primary']),
                         create_kpi_card(f"5-Year Avg ({LAST5_RANGE})", LAST5_AVG, "lbs/acre", COLORS['success']),
@@ -237,8 +245,9 @@ app.layout = html.Div([
                         "USDA NASS does not publish county-level citrus yield or production "
                         "(checked for oranges and citrus totals, in both the survey and Census of "
                         "Agriculture programs). "
-                        "The panel below shows what IS real and county-specific: local weather station "
-                        "data and Census bearing-acreage figures for four large Florida orange-producing "
+                        "The panel below shows what IS real and county-specific: weather from one NOAA "
+                        "station per county (the station, not the whole county) and Census "
+                        "bearing-acreage figures for four large Florida orange-producing "
                         "counties. No yield number is estimated or fabricated for any county, and "
                         "acreage totals USDA withheld are shown as gaps, not estimated."
                     ], style={'fontSize': '13px', 'color': '#666', 'backgroundColor': '#fff9db',
@@ -261,8 +270,9 @@ app.layout = html.Div([
                     dcc.Graph(id='county-frost-chart'),
                     chart_hint(),
                     html.P(
-                        html.I("Breaks in a line are years when a county's stations were missing some "
-                               "January-March temperature days: shown as missing, not as zero."),
+                        html.I(COUNTY_STATION_NOTE + " Breaks in a line are years when the station "
+                               "was missing some January-March nights, or had no record: shown as "
+                               "missing, not as zero."),
                         style={'fontSize': '12px', 'color': '#888', 'marginTop': '10px'}
                     )
                 ], style={'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}),
@@ -476,11 +486,10 @@ def update_scenario(frost_increase_pct):
     baseline_yield = latest['yield_lbs_acre']
 
     # Scale the slider off the 35-year historical AVERAGE frost days, not
-    # the single latest year. The latest year (and most years - median is
-    # 0 across 1990-2024) often has 0 frost days, which made "+X%" always
-    # multiply against zero and produce zero visible change regardless of
-    # slider position. The historical average (~0.77 days) gives a stable,
-    # always-nonzero reference to scale a "% worse than typical" scenario.
+    # the single latest year. The latest year (and 11 of the 35 years) has 0
+    # frost days, which made "+X%" multiply against zero and produce no
+    # visible change at any slider position. The historical average gives a
+    # stable, always-nonzero reference for a "% worse than typical" scenario.
     historical_avg_frost = df_model['frost_days_bloom'].mean()
 
     # Simple model: each additional frost day reduces yield by ~2000 lbs/acre
@@ -565,9 +574,14 @@ def update_county_frost(selected_counties):
             marker=dict(size=5)
         ))
 
+    # Say which counties have no 2010 value instead of implying all were measured.
+    in_2010 = county_features[county_features['year'] == 2010]
+    no_2010 = sorted(in_2010.loc[in_2010['frost_days_bloom'].isna(), 'county_name'])
+    freeze_note = (f"({', '.join(no_2010)}: 2010 record incomplete)" if no_2010
+                   else "(all counties recorded frost)")
     fig.add_annotation(
-        x=2010, y=county_features[county_features['year'] == 2010]['frost_days_bloom'].max(),
-        text="Jan 2010 FL freeze<br>(all counties hit)",
+        x=2010, y=in_2010['frost_days_bloom'].max(),
+        text=f"Jan 2010 FL freeze<br>{freeze_note}",
         showarrow=True, arrowhead=2, ax=40, ay=-40,
         font=dict(size=11, color='#666')
     )

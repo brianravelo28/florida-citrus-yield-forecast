@@ -2,47 +2,34 @@
 
 ![Florida Citrus Yield Forecasting dashboard](docs/screenshot.png)
 
-An end-to-end pipeline and interactive dashboard that pulls real USDA NASS yield data and NOAA weather observations, engineers agronomic weather features, benchmarks an ARIMA baseline against LightGBM, and compares four large Florida orange-producing counties.
+A pipeline and interactive dashboard that pulls public data on Florida orange yields (from the USDA's National Agricultural Statistics Service, NASS) and weather (from NOAA, the National Oceanic and Atmospheric Administration), tests whether weather helps predict yield, and compares four large orange-growing counties.
 
-**Live dashboard:** <https://florida-citrus-yield-forecast.onrender.com/> (free tier - the first load after idle can take about 40 seconds)
+**Live dashboard:** <https://florida-citrus-yield-forecast.onrender.com/> (free tier: the first load after idle can take about 40 seconds)
 
-> **Scope note.** USDA NASS does not publish county-level citrus *yield* or *production* (checked for oranges and citrus totals, in both the survey and Census of Agriculture programs; production is published at state level only). The forecasting models therefore target **Florida statewide orange yield**. County-level analysis (Polk, Hendry, DeSoto, Highlands - four large orange-producing counties; see [Missing and withheld data](#missing-and-withheld-data)) is limited to what is actually published or measurable: Census bearing acreage and local weather. **No county yield is estimated or fabricated anywhere in this project.**
+> **Scope.** USDA publishes citrus yield only for the whole state, so the forecasting models target **statewide** orange yield. Florida's oranges are grown mostly in the central and southern citrus belt (general knowledge, not checked in this project), so the weather inputs come from two NOAA stations in that region: a regional proxy, not a statewide measurement. The county comparison covers four leading counties (Polk, Hendry, DeSoto, Highlands) and only what is published or measurable: Census acreage and weather from one station per county. No county yield is estimated anywhere in this project.
 
 ## Headline findings
 
-- **Florida orange yield fell 87% from its 2004 peak (38,520 lb/acre) to its 2023 low (5,130 lb/acre).** 2024 recovered slightly to 7,020.
-- **Bearing orange acreage fell 37% to 47% in every county, measured across each county's published Census totals:** Polk -46.5% (102,295 to 54,692 acres, 2002-2022), DeSoto -37.3% (67,394 to 42,234, 2002-2022), Hendry -44.7% (94,267 to 52,114, 2012-2022), Highlands -46.3% (75,984 to 40,799, 2002-2017). The periods differ because USDA withheld some totals (see [Missing and withheld data](#missing-and-withheld-data)).
-- **Both models failed to anticipate the 2023-24 collapse, and neither beats a naive baseline.** On a two-year holdout, ARIMA scored RMSE 5,860 and LightGBM 10,457 lb/acre - both over-predicted heavily - while simply repeating the previous year's yield scored 4,834. Over 17 one-step-ahead rolling folds (2008-2024), the naive baseline (4,222) was about even with ARIMA (4,290) and better than LightGBM (6,782) (see [Model results](#model-results)). The collapse sits below anything in the 1990-2022 training window (minimum 11,250 in 2018), which tree models cannot extrapolate to.
-- **Frost days ranked 7th of 12 in the fitted model** (by split count); lagged yield, temperature, GDD, and the trend term all ranked above it. Because the weather inputs are approximate (see [Known limitations](#known-limitations)), this is weak evidence about frost, not a finding that frost doesn't matter.
-- **Frost exposure differs by county in this data.** Highlands averages 2.5 bloom-season frost days per year over the 25 years with complete winter records (max 14), versus 0.8 for Polk (all 35 years). Part of that gap reflects which stations each county has and how many are averaged, so read it as approximate rather than a clean geographic comparison. 2010 is the worst frost year in all four counties (tied with 1996 and 2001 in DeSoto), consistent with the January 2010 Florida freeze.
+- **Florida orange yield fell 87%,** from 38,520 lb/acre in 2004 to 5,130 in 2023. 2024 recovered slightly to 7,020.
+- **Bearing orange acreage fell 37% to 47% in every county,** across each county's published Census totals: Polk -46.5% (2002-2022), DeSoto -37.3% (2002-2022), Hendry -44.7% (2012-2022), Highlands -46.3% (2002-2017). The periods differ because USDA withheld some totals.
+- **Neither model beats simply repeating last year's yield.** Both over-predicted 2023 and 2024 heavily (ARIMA by 1.7 to 2.3 times, LightGBM by 2.6 to 2.9 times), because neither had seen yields that low in its training years (1990-2022).
+- **Weather barely helps predict yield here.** Frost days did not trend up: the station pair used averages 1.9 bloom-season frost days a year in 1990-2007 and 1.8 in 2008-2024. How the model ranks its inputs changed completely when the weather stations changed, so the ranking is only a rough guide.
+- **Frost differs sharply between the county stations** (Highlands 6.4 days a year, Polk 1.7), but each number describes one station, and the Highlands station sits in a notably cold spot. Read it as a comparison of stations, not of counties.
 
 ## Data
 
 | Dataset | Source | Details |
 |---|---|---|
-| Statewide orange yield | USDA NASS QuickStats (`api_GET`) | `ORANGES`, `YIELD`, `BOXES / ACRE`, all classes, state level, 1990-2024 (35 rows). Converted to lb/acre at 90 lb/box, the standard Florida orange box weight. |
-| Daily weather (central Florida) | NOAA CDO v2 `/data`, GHCND | TMAX, TMIN, PRCP from Lakeland Linder, Tampa International, Orlando Executive, and Sebring (Sebring only from Dec 2007). 106,289 daily records. |
-| County bearing acreage | USDA Census of Agriculture | Oranges, all varieties combined, 2002/2007/2012/2017/2022, four counties: 20 county-years, of which 16 are published totals and 4 are withheld by USDA and left blank. Published every five years; never interpolated. |
-| County daily weather | NOAA CDO v2 `/data`, GHCND | Two or more verified stations per county, 1990-2024. 281,383 daily records. |
+| Statewide orange yield | USDA NASS QuickStats | 1990-2024, converted to lb/acre at 90 lb per box |
+| Statewide weather | NOAA daily records (GHCND) | Daily highs, lows and rainfall from two fixed stations, Tampa International and the Archbold Biological Station |
+| County acreage | USDA Census of Agriculture | Bearing orange acres, 2002-2022 (every five years), four counties |
+| County weather | NOAA daily records | One station per county: Polk (Lakeland 2), Hendry (Moore Haven Lock 1, in neighboring Glades County), DeSoto (Arcadia), Highlands (Archbold) |
 
-Notes on data handling:
-
-- NOAA station IDs were verified by querying actual observations across decades, not by trusting the station catalog (for example, Bartow Municipal is registered but returns no records).
-- A physically-motivated outlier filter rejects sensor errors (TMAX outside 20-110 F, TMIN outside -5-85 F, PRCP outside 0-20 in). It removed 12 of 281,395 county records (e.g. a 115 F daily high, 101 F daily lows) and none of the state-level records.
-- Weather features for the statewide model come from the four central-Florida stations above, averaged per day. This is a proxy for statewide conditions, not a statewide measurement.
-- **Snapshot date.** The committed data was fetched on 2026-09-16. Upstream data can change: re-running the county fetch on 2026-10-14 returned 81 additional NOAA records (27 days of February 2018 at Lakeland Linder) that were not yet published at the first fetch, with no existing value changed. They do not affect any feature, and the committed snapshot was kept so the statewide and county files stay consistent.
+Weather is a **proxy**: two stations stand in for the whole state, and neither is in the main Polk grove area. How the stations were chosen, and how sensitive the results are to that choice, is in [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 
 ## Missing and withheld data
 
-The project reports what USDA and NOAA actually publish and shows gaps where they don't. Nothing is estimated, averaged, or interpolated to fill a gap: a filled-in value would be a modeled number sitting beside measured ones, and for withheld values there is nothing to check it against.
-
-| Case | What it means here |
-|---|---|
-| **Not published** | County-level citrus yield, production, and sales have no records at all in the NASS data checked (oranges and citrus totals, survey and Census programs). The models therefore target statewide yield. |
-| **Withheld by USDA** | The Census marks four county-year acreage totals "(D)", withheld to avoid disclosing individual operations' data: Hendry 2002 and 2007, DeSoto 2012, Highlands 2022. They are blank in the data (`status = withheld`) and appear as gaps in the dashboard chart. In each case USDA still published one orange variety (e.g. Highlands 2022: Valencia, 27,449 acres) but not the all-varieties total; those partial figures are not county totals and are not used. |
-| **Gaps on our side** | Days missing from a weather station's record (see [Known limitations](#known-limitations)). |
-
-**Why these four counties.** Polk, Hendry, DeSoto, and Highlands were chosen from the project's initial list of seven counties as large orange producers. Among counties with published 2022 totals, Polk (54,692 acres), Hendry (52,114), and DeSoto (42,234) rank first to third, and Hardee (37,623, not on the initial list) ranks fourth. Highlands' 2022 total is withheld, so its rank that year cannot be determined; it is kept for its large published totals through 2017 and because it has the highest bloom-season frost exposure of the four.
+Nothing is estimated or filled in. County citrus yield is not published, so the models forecast statewide yield. USDA withheld four county acreage totals (Hendry 2002 and 2007, DeSoto 2012, Highlands 2022); they show as gaps in the dashboard. A weather feature is left blank when too many days are missing (every night for frost; at least 95% of days for summer features), and blanks show as gaps or as *missing*, never as zero. Details and the county selection are in [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 
 ## Pipeline
 
@@ -53,152 +40,92 @@ python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\act
 pip install -r requirements.txt
 ```
 
-Requires Python 3.11 or newer. `requirements.txt` is pinned to the versions the live deployment runs on (Python 3.14); the pins do not install on Python 3.9.
-
-The cleaned datasets and model outputs are committed, so you can launch the dashboard immediately:
+Requires Python 3.11 or newer; `requirements.txt` is pinned to the versions the live site runs on (Python 3.14). The cleaned data and results are committed, so the dashboard runs right away:
 
 ```bash
 python run_dashboard.py          # http://127.0.0.1:8050  (run from the repo root)
 ```
 
-To rebuild everything from the source APIs, get free keys from [USDA NASS QuickStats](https://quickstats.nass.usda.gov/api) and [NOAA CDO](https://www.ncei.noaa.gov/cdo-web/token) and export them as environment variables (the scripts read them at run time and stop with a clear message if they are unset; no key is stored in the code):
+To rebuild from the source APIs, get free keys from [USDA NASS](https://quickstats.nass.usda.gov/api) and [NOAA](https://www.ncei.noaa.gov/cdo-web/token) and set them as environment variables (the scripts stop with a clear message if a key is unset; no key is stored in the code):
 
 ```bash
-export NASS_KEY=your-nass-key           # Windows PowerShell: $env:NASS_KEY = "your-nass-key"
-export NOAA_TOKEN=your-noaa-token
+export NASS_KEY=your-nass-key           # PowerShell: $env:NASS_KEY = "your-nass-key"
+export NOAA_API_KEY=your-noaa-token
 
-# Statewide yield model (a failed API call stops the run and writes nothing)
-python src/fetch_data.py                 # NASS yield + NOAA weather (a few minutes)
-python src/feature_engineering.py        # merge + 13 feature columns -> data/df_model.csv
-python src/train_models.py               # ARIMA, LightGBM, baselines, rolling origin -> results/
+python src/fetch_data.py                 # yield + statewide weather (a failed call stops the run and writes nothing)
+python src/feature_engineering.py        # -> data/df_model.csv
+python src/train_models.py               # ARIMA, LightGBM, baselines -> results/
 python src/stress_indicator.py           # -> results/stress_indicator.csv
-
-# County comparison panel (same fail-loud behavior)
-python src/fetch_county_data.py          # acreage + county weather (roughly 10-15 minutes)
+python src/fetch_county_data.py          # county acreage + weather (about 10 minutes)
 python src/county_feature_engineering.py # -> data/county_features.csv
+python src/station_coverage.py           # optional: re-probe NOAA station coverage
+python src/station_sensitivity.py        # optional: results for other station choices
 ```
 
 ## Features
 
-`df_model.csv` has 35 rows (one per year) and 16 columns: `county_name`, `year`, `yield_lbs_acre`, and the 13 feature columns below (12 model inputs plus the `log_yield` target). Temperatures are in degrees F and precipitation in mm. Daily values are averaged across stations before aggregation.
-
-**Missing weather is missing, never zero.** A feature is calculated only when every calendar day of its window (Jan-Mar or May-Aug) has an observation; otherwise it is left blank (NA). The statewide series is complete for every year, so none of its features are NA. In the county panel 36 of 140 county-years are missing at least one of the frost, temperature, or GDD features the dashboard shows, and they appear as gaps or as "*missing*" in the charts.
-
-| Feature | Definition |
-|---|---|
-| `frost_days_bloom` | Days with TMIN <= 32 F, Jan-Mar |
-| `tmax_mean_grow`, `tmin_mean_grow` | Mean daily max / min temperature, May-Aug |
-| `temp_variance_grow` | **Standard deviation** (not variance) of daily max temperature, May-Aug. The name comes from the original project brief; it is kept so file and column names stay stable |
-| `gdd_total_grow` | Growing degree days, base 50 F, May-Aug |
-| `precip_total_grow` | Total precipitation, May-Aug |
-| `precip_rolling_30/60/90` | Largest 30/60/90-calendar-day rolling precipitation sum within May-Aug |
-| `precip_deviation` | `precip_total_grow` minus its mean over the series: wetter or drier than normal. It is the same information as `precip_total_grow` shifted by a constant, so it is redundant in the models (importance 0); it is used for the stress score, which takes its absolute value so droughts and floods both count |
-| `yield_lag1` | Previous year's yield |
-| `year_numeric` | Calendar year (trend) |
-| `log_yield` | `log(1 + yield_lbs_acre)`, the LightGBM target |
+Twelve inputs: bloom-season (Jan-Mar) frost days; summer (May-Aug) temperature averages and spread, growing degree days (a heat measure), and rainfall totals; last year's yield; and a time trend. `temp_variance_grow` is a standard deviation despite its name. Definitions are in [docs/METHODOLOGY.md](docs/METHODOLOGY.md) and columns in [docs/SCHEMA.md](docs/SCHEMA.md).
 
 ## Model results
 
-Two models are compared against a **naive baseline: "yield stays at last year's value"**. ARIMA(1,1,1) uses yield only. LightGBM uses 12 standardized inputs and a `log_yield` target (1991 onward, after dropping the first lag row), with `learning_rate=0.05`, `num_leaves=31`, `max_depth=5`, `min_data_in_leaf=10`, 200 rounds.
+Two models are compared with a **naive baseline: "yield stays at last year's value."** ARIMA (a classic time-series model) uses yield history only; LightGBM (a gradient-boosted tree model) uses the weather, lagged-yield and trend inputs. Errors are RMSE and MAE (typical miss, in lb/acre; lower is better).
 
-### 2023-24 holdout (train 1990-2022)
+**2023-24 holdout (trained on 1990-2022):**
 
-| Method | RMSE (lb/acre) | MAE (lb/acre) | 2023 pred. | 2024 pred. |
+| Method | RMSE | MAE | 2023 pred. | 2024 pred. |
 |---|---|---|---|---|
 | Actual | - | - | 5,130 | 7,020 |
-| Naive, one step (previous year's actual yield) | 4,834 | 4,230 | 11,700 | 5,130 |
-| Naive, multi step (2022 repeated) | 5,704 | 5,625 | 11,700 | 11,700 |
-| ARIMA(1,1,1), yield only | 5,860 | 5,775 | 11,902 | 11,798 |
-| LightGBM, weather + lag + trend | 10,457 | 10,419 | 16,439 | 16,548 |
+| Naive, one step | 4,834 | 4,230 | 11,700 | 5,130 |
+| ARIMA(1,1,1) | 5,860 | 5,775 | 11,902 | 11,798 |
+| LightGBM | 10,521 | 10,508 | 15,100 | 18,066 |
 
-The methods do not all get the same information: ARIMA and the multi-step baseline forecast both years from the end of 2022, while LightGBM and the one-step baseline use each year's actual previous-year yield. Only two test points, so this is a diagnosis of the 2023-24 break, not a ranking.
+Only two test points, and the methods get different information, so this diagnoses the 2023-24 break rather than ranking the methods.
 
-### Rolling origin, 2008-2024 (17 one-step-ahead folds)
+**Rolling origin, 2008-2024** (17 one-step-ahead folds; each method is fit on earlier years only):
 
-For each year from 2008 on, every method is fit on earlier years only and predicts that one year using the previous year's actual yield, so all three are on equal footing (`src/train_models.py`, per-fold results in `results/rolling_origin_folds.csv`).
-
-| Method | RMSE, all folds | MAE, all folds | RMSE, last 5 years |
+| Method | RMSE | MAE | RMSE, last 5 years |
 |---|---|---|---|
-| Naive (previous year's yield) | 4,222 | 3,531 | 3,580 |
-| ARIMA(1,1,1) | 4,290 | 3,575 | 3,767 |
-| LightGBM | 6,782 | 5,678 | 7,385 |
+| Naive | 4,222 | 3,531 | 3,580 |
+| ARIMA | 4,289 | 3,566 | 3,767 |
+| LightGBM | 7,278 | 6,015 | 8,363 |
 
-**Neither model beats repeating last year's yield.** ARIMA is about even with it, and LightGBM is clearly worse: it over-predicted in every year from 2010 on, lagging a steadily falling series. In this data, weather plus lagged yield adds no predictive value beyond last year's yield. That fits the 2023-24 collapse, whose weather looks ordinary. Caveats: 17 overlapping folds is a small sample; ARIMA failed to converge cleanly in 1 of the 17 fits; and ARIMA's rolling numbers differ by about 1 lb/acre across statsmodels versions.
-
-Feature importance (LightGBM split counts from the 2023-24 holdout model - not SHAP):
-
-| Rank | Feature | Splits |
-|---|---|---|
-| 1 | `yield_lag1` | 57 |
-| 2 | `tmax_mean_grow` | 44 |
-| 3 | `tmin_mean_grow` | 42 |
-| 3 | `year_numeric` | 42 |
-| 5 | `gdd_total_grow` | 36 |
-| 6 | `precip_total_grow` | 21 |
-| 7 | `frost_days_bloom` | 19 |
-
-No forecast beyond 2024 is produced.
+ARIMA is about even with the baseline and LightGBM is clearly worse, over-predicting in every year from 2010 on while yields fell. Weather plus last year's yield adds nothing beyond last year's yield here. With 17 overlapping folds this is a small sample. No forecast beyond 2024 is produced.
 
 ## Climate stress indicator
 
-A weather-based score per year, with thresholds computed from 1990-2020:
-
-```
-stress = 0.4 * min(frost_days / p75_frost_days, 2)
-       + 0.3 * min(|precip_deviation| / std_precip_deviation, 2)
-       + 0.2 * clip(mean_gdd / gdd, 0.5, 2)
-       + 0.1 * 1[yield < 25th percentile of yield]
-```
-
-`HIGH` > 1.0, `MODERATE` > 0.5, otherwise `LOW`. Result across 35 years: 8 HIGH (1996, 1997, 1999, 2001, 2009, 2010, 2015, 2018), 14 MODERATE, 13 LOW.
-
-The indicator is built from weather inputs (plus a low-yield flag), so it does not register disease or hurricane damage: it scores 2023 - the record-low yield year - as LOW (0.36). Treat it as a frost/precipitation/heat risk gauge, not a yield-loss predictor.
+A weather-based score per year (frost, rainfall deviation, heat, plus a low-yield flag; formula in [docs/METHODOLOGY.md](docs/METHODOLOGY.md)). Across 35 years: 6 HIGH (1996, 2001, 2002, 2007, 2010, 2012), 16 MODERATE, 13 LOW. It is unvalidated and misses disease and hurricane damage: it scores 2023, the record-low yield, as MODERATE. Treat it as a descriptive gauge, not a yield-loss predictor.
 
 ## Dashboard
 
-Four-tab Plotly Dash app (`src/app.py`), with zoom/legend interaction hints under every chart.
-
-1. **Overview** - KPI cards computed from the data (latest yield, 5-year average, peak yield, latest stress level), historical yield with the ARIMA and LightGBM holdout predictions for 2023-24, and the stress-score timeline.
-2. **Weather Analysis** - temperature, precipitation, and bloom-season frost-day time series; top-10 LightGBM feature importance.
-3. **Scenarios** - slider for a 0-50% increase in frost days relative to the 1990-2024 average (0.77 days/year). Illustrative only: it assumes 2,000 lb/acre lost per additional frost day (an assumption, not a fitted coefficient), $0.45/lb, and a county-sized 50,000 acres at the statewide average yield (see [Known limitations](#known-limitations)). At +50%, yield goes from 7,020 to 6,249 lb/acre, about $17.4M in lost revenue.
-4. **County Comparison** - county checklist; bloom-season frost days by county (years with incomplete winter records appear as breaks in the line, not zeros); Census bearing-acreage trends (withheld totals shown as gaps, with a footnote naming them); and a **Yearly Outlook** panel (year dropdown, opening on 2018, the latest year with complete data for every county) comparing frost days, mean max temperature, and GDD across the selected counties, with incomplete values labeled "*missing*".
+A four-tab Plotly Dash app (`src/app.py`): **Overview** (KPIs, yield history with the model predictions, stress timeline); **Weather Analysis** (temperature, rainfall, frost days, feature importance); **Scenarios** (an illustrative slider for more frost days); **County Comparison** (frost days by county, acreage trends with withheld totals as gaps, and a year-by-year panel that opens on 2019, the latest year with complete data for every county).
 
 ## Known limitations
 
-- **Yield is statewide; weather is central Florida.** The statewide yield model uses four central-Florida stations as a proxy.
-- **Small evaluation samples.** The headline holdout rests on two test points. The 17-fold rolling-origin evaluation is more informative but still small, with overlapping training sets. There is no hyperparameter tuning and no prediction intervals.
-- **The 2023-24 collapse is unexplained by the features.** Citrus greening (HLB) and hurricane damage are not modelled.
-- **Scenario dollars are a stylized example, not a county estimate.** USDA publishes no county-level yield, so the only yield available is the statewide average (7,020 lb/acre in 2024). To make the dollar impact tangible, the scenario applies that average to a fixed 50,000 acres - about the size of the two largest orange counties with published Census totals (Polk 54,692 and Hendry 52,114 bearing acres in 2022) - and asks what a county-sized grove area would lose if it yielded at the state average and frost days rose. This rests on an assumption that cannot be tested here: that a county yields roughly the state average. The 50,000-acre figure is a fixed input in the code rather than computed from the data, and the 2,000 lb/acre-per-frost-day loss and $0.45/lb price are assumptions too. Acreage only scales the dollar total (the per-acre change does not depend on it), so read the dollar figure as a sense of scale, not a forecast.
-- **Some county acreage totals are withheld by USDA** (4 of 20), so county acreage trends cover different periods. See [Missing and withheld data](#missing-and-withheld-data).
-- **Some county weather is missing.** Incomplete weather windows are left blank, not counted as zero (see [Features](#features)). In the county panel, 36 of 140 county-years are missing at least one of the frost, temperature, or GDD values the dashboard shows, and 19 are missing rainfall (worst: Highlands 2022, with 9 of 123 May-Aug days observed). The statewide series is complete.
-- **Station coverage varies, and the weather is approximate.** The set of stations behind the statewide series changes over time (for example Tampa alone in 1996-98), county stations have different start and end dates, and averaging stations before counting frost days dilutes frost. See [docs/METHODOLOGY.md](docs/METHODOLOGY.md) for the timeline.
-- **Weather windows are offset from the crop year.** NASS labels a Florida citrus season by its end year, but the calendar-year weather windows are matched to that label without adjustment, so they are offset by roughly a year from the crop's actual bloom and growth. The effect on results was not measured.
+- **Weather is approximate.** Two stations represent the state, one station represents each county, and the Hendry station is in the next county over. Tampa is coastal and Archbold is a cold site, so frost levels are not comparable with other sources. FAWN, the University of Florida's agricultural weather network, places stations in growing areas but starts in 1997 and was not used.
+- **County series have gaps.** Polk has no weather before 1995, DeSoto after 2021, and several county-years are blank (30 of 140 are missing a value the dashboard shows).
+- **Small samples.** The headline holdout has two test points; there is no tuning and no prediction intervals.
+- **The 2023-24 collapse is unexplained** by these inputs. Citrus greening (HLB) and hurricane damage are not modelled.
+- **The scenario is a stylized example.** It assumes 2,000 lb/acre lost per extra frost day and applies the state average yield to 50,000 acres; see [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
+- **Weather windows are offset from the crop year** by roughly a year (NASS labels a season by its end year); the effect was not measured.
+
+## Tests
+
+`pytest` runs small checks on the feature engineering: frost-day counts, the missing-data rules (blank, never zero), the fixed station set, growing degree days, rolling rainfall windows, and withheld acreage staying blank. CI runs them on every push.
 
 ## Project structure
 
 ```
-src/
-  fetch_data.py                  # NASS yield + NOAA weather (statewide model)
-  feature_engineering.py         # weather aggregation, 13 feature columns
-  train_models.py                # ARIMA + LightGBM
-  stress_indicator.py            # climate stress score
-  fetch_county_data.py           # county acreage + county weather
-  county_feature_engineering.py  # per-county features
-  app.py                         # Dash dashboard (4 tabs)
-data/                            # nass_yield, noaa_weather, df_model, county_acreage, county_weather, county_features (CSV)
-results/                         # model_results.json, stress_indicator.csv
-docs/                            # schema, methodology, API notes, citations
-run_dashboard.py                 # local entry point
-render.yaml                      # Render settings (reference)
-RENDER_DEPLOYMENT.md             # deployment notes
+src/        fetch_data, feature_engineering, train_models, stress_indicator,
+            fetch_county_data, county_feature_engineering, station_coverage,
+            station_sensitivity, app (Dash dashboard)
+tests/      feature-engineering tests
+data/       raw and engineered CSVs, station coverage matrix
+results/    model results, stress indicator, station sensitivity
+docs/       METHODOLOGY, SCHEMA, API_SOURCES, WALKTHROUGH, citations
 ```
 
-## Deployment
-
-Deployed on [Render](https://render.com) (build: `pip install -r requirements.txt`; start: `gunicorn src.app:server --bind 0.0.0.0:$PORT`). The data and results files are committed because the app loads them at startup, and no API keys are needed at runtime. See [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md).
+Deployed on [Render](https://render.com) from `main` (see [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md)); the app reads the committed files, so no API keys are needed at runtime.
 
 ## License
 
-MIT - see [LICENSE](LICENSE).
-
-Data: USDA NASS QuickStats, USDA Census of Agriculture, NOAA NCEI Global Historical Climatology Network (daily).
+MIT, see [LICENSE](LICENSE). Data: USDA NASS QuickStats, USDA Census of Agriculture, NOAA NCEI Global Historical Climatology Network (daily).

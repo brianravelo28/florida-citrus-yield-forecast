@@ -1,0 +1,4 @@
+station_set,frost_mean_1990_2007,frost_mean_2008_2024,tmin_grow_trend_F_per_decade,years_with_NA_features,high_stress_years
+Tampa + Archbold (used),1.94,1.82,0.96,0,1996 2001 2002 2007 2010 2012
+Tampa only,0.56,0.53,1.1,0,1996 2001 2010
+Archbold only,6.17,6.59,0.82,0,1996 2000 2001 2002 2010 2013 2018

@@ -4,8 +4,8 @@ counties: Polk, Hendry, DeSoto, Highlands.
 
 Produces the same weather-derived features as feature_engineering.py
 (frost days, GDD, precip patterns, thermal stability) using the same shared
-function, run separately per county on each county's own real local weather
-stations (src/fetch_county_data.py). Real bearing acreage (Census years only)
+function, run separately per county on that county's single primary NOAA station
+(src/fetch_county_data.py). Real bearing acreage (Census years only)
 is merged in alongside.
 
 Missing weather is missing, never zero: a feature is blank (NA) when any day
@@ -23,7 +23,8 @@ signals plus real acreage trends, per county, nothing more.
 import pandas as pd
 from pathlib import Path
 
-from feature_engineering import engineer_weather_features
+from feature_engineering import engineer_weather_features, station_availability_report
+from fetch_data import START_YEAR, END_YEAR
 
 Path("data").mkdir(exist_ok=True)
 
@@ -53,7 +54,10 @@ def main():
     all_features = []
 
     for county in counties:
-        feats = engineer_weather_features(df_weather[df_weather["county_name"] == county], county)
+        county_weather = df_weather[df_weather["county_name"] == county]
+        years = range(START_YEAR, END_YEAR + 1)
+        station_availability_report(county_weather, county, years)
+        feats = engineer_weather_features(county_weather, county, years)
         # Precip deviation from this county's own 1990-2024 mean (years with missing rain are skipped)
         feats["precip_deviation"] = feats["precip_total_grow"] - feats["precip_total_grow"].mean()
         all_features.append(feats)

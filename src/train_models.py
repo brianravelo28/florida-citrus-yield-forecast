@@ -238,17 +238,24 @@ def rolling_origin_evaluation(df, first_test_year=FIRST_ROLLING_TEST_YEAR):
                           lgb.Dataset(scaler.fit_transform(train_df[FEATURE_COLS].values),
                                       label=train_df['log_yield'].values),
                           num_boost_round=LGB_ROUNDS)
-        lgb_pred = float(np.expm1(model.predict(scaler.transform(test_df[FEATURE_COLS].values))[0]))
+        # A year whose weather features are NA cannot be scored by LightGBM (nothing is
+        # imputed); it is left out of the comparison for every method, below.
+        lgb_pred = (float(np.expm1(model.predict(scaler.transform(test_df[FEATURE_COLS].values))[0]))
+                    if len(test_df) else float('nan'))
 
         rows.append({'year': year, 'actual': float(by_year[year]), 'persistence': persistence,
                      'arima': arima_pred, 'lightgbm': lgb_pred, 'train_rows_lightgbm': len(train_df)})
 
     folds = pd.DataFrame(rows)
+    skipped = [int(y) for y in folds.loc[folds['lightgbm'].isna(), 'year']]
+    folds = folds.dropna(subset=['lightgbm']).reset_index(drop=True)
     methods = ['persistence', 'arima', 'lightgbm']
     recent = folds[folds['year'] >= folds['year'].max() - 4]
     summary = {
         'description': f"One-step-ahead rolling origin, test years {first_test_year}-{int(folds['year'].max())} "
-                       f"({len(folds)} folds); each fold trains only on earlier years.",
+                       f"({len(folds)} folds); each fold trains only on earlier years."
+                       + (f" Skipped for every method because the year's weather features are NA: {skipped}." if skipped else ""),
+        'skipped_years': skipped,
         'first_test_year': first_test_year,
         'n_folds': len(folds),
         'rmse': {m: rmse(folds['actual'], folds[m]) for m in methods},
@@ -257,7 +264,8 @@ def rolling_origin_evaluation(df, first_test_year=FIRST_ROLLING_TEST_YEAR):
         'folds_with_arima_convergence_warning': int(arima_warnings),
     }
 
-    print(f"{len(folds)} folds, test years {first_test_year}-{int(folds['year'].max())}")
+    print(f"{len(folds)} folds, test years {first_test_year}-{int(folds['year'].max())}"
+          + (f" (skipped, weather NA: {skipped})" if skipped else ""))
     print(f"{'method':<14}{'RMSE (all folds)':>18}{'MAE':>10}{'RMSE (last 5)':>16}")
     for m in methods:
         print(f"{m:<14}{summary['rmse'][m]:>18,.0f}{summary['mae'][m]:>10,.0f}{summary['rmse_last5'][m]:>16,.0f}")

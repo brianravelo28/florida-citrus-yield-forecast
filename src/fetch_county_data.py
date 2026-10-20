@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from fetch_data import FetchError, START_YEAR, END_YEAR, get_json, is_plausible, require_key
+from fetch_data import FetchError, START_YEAR, END_YEAR, get_json, is_plausible, noaa_token, require_key
 
 Path("data").mkdir(exist_ok=True)
 
@@ -38,31 +38,37 @@ NASS_COUNTIES = {
     "Highlands": "HIGHLANDS",
 }
 
-# Verified-working NOAA GHCND stations per county (tested directly against
-# the /data endpoint across multiple decades - station catalog metadata
-# alone is not reliable, e.g. Bartow is a registered station that returns
-# zero observations in every year tested). Clewiston (USC00081654) is a
-# usable Hendry County station for 1990-2003 that is not currently included.
+# One primary NOAA GHCND station per county, chosen from the coverage probe
+# (src/station_coverage.py, docs/METHODOLOGY.md): an in-county station with the
+# fewest years missing a complete bloom or growing-season window. Exception:
+# Hendry. Its in-county stations are blank in 20+ of 35 years, so Moore Haven
+# Lock 1 is used; NOAA's station metadata puts it in neighboring Glades County
+# (about 20 km from Devils Garden, Hendry), and the dashboard says so.
+# A single station keeps each county's series the same instrument in every
+# year; gaps stay gaps (blank), they are never filled from another station.
+# Each series describes that station, not the whole county. DeSoto has only
+# one in-county station and it ends in April 2021.
 COUNTY_STATIONS = {
-    "Polk": {
-        "Lakeland Linder": "USW00012883",
-        "Tampa International": "USW00012842",
-        "Orlando Executive": "USW00012841",
-        "Sebring": "USW00092827",
-    },
-    "Hendry": {
-        "La Belle": "USC00084662",
-        "Moore Haven Lock 1": "USC00085895",
-    },
-    "DeSoto": {
-        "Arcadia": "USC00080228",
-        "Punta Gorda Airport": "USW00012812",
-    },
-    "Highlands": {
-        "Avon Park 2 W": "USC00080369",
-        "Sebring": "USW00092827",
-    },
+    "Polk": {"Lakeland 2": "USC00084802"},
+    "Hendry": {"Moore Haven Lock 1": "USC00085895"},
+    "DeSoto": {"Arcadia": "USC00080228"},
+    "Highlands": {"Archbold Biological Station": "USC00080236"},
 }
+
+# Sanity floor: a county whose station returns data in fewer years than this
+# almost certainly has a wrong station id.
+MIN_YEARS_WITH_DATA = 20
+
+
+def parse_acreage_value(raw, label):
+    """Return (acres, status) for one NASS Value: "(D)" is withheld (NaN, never estimated)."""
+    raw = str(raw).strip()
+    if raw == "(D)":
+        return float("nan"), "withheld"
+    try:
+        return float(raw.replace(",", "")), "published"
+    except ValueError:
+        raise FetchError(f"unexpected acreage value {raw!r} for {label}")
 
 
 def fetch_bearing_acreage():
@@ -102,14 +108,7 @@ def fetch_bearing_acreage():
                     f"expected exactly one ALL CLASSES total for {county_label} {year}, got {len(rows)}"
                 )
 
-            raw = str(rows[0].get("Value", "")).strip()
-            if raw == "(D)":
-                acres, status = float("nan"), "withheld"
-            else:
-                try:
-                    acres, status = float(raw.replace(",", "")), "published"
-                except ValueError:
-                    raise FetchError(f"unexpected acreage value {raw!r} for {county_label} {year}")
+            acres, status = parse_acreage_value(rows[0].get("Value", ""), f"{county_label} {year}")
 
             records.append({
                 "county_name": county_label,
@@ -134,7 +133,7 @@ def fetch_station_weather(station_name, station_id):
     a failed request is not, and raises FetchError via get_json.
     """
     url = "https://www.ncei.noaa.gov/cdo-web/api/v2/data"
-    headers = {"token": require_key("NOAA_TOKEN")}
+    headers = {"token": noaa_token()}
     rows, rejected, returned = [], 0, 0
 
     for year in range(START_YEAR, END_YEAR + 1):
@@ -203,12 +202,17 @@ def fetch_all_county_weather():
 
     df = pd.DataFrame(all_rows)
 
-    # Every county must have weather in every year, as the statewide fetch requires.
+    # A single co-op station can legitimately have no data in some years
+    # (they start and stop), so empty years are reported, not fatal. A county
+    # with almost no data at all means a wrong station id, which is fatal.
     years = pd.to_datetime(df["date"]).dt.year
     for county_label in COUNTY_STATIONS:
-        missing = sorted(set(range(START_YEAR, END_YEAR + 1)) - set(years[df["county_name"] == county_label]))
+        have = set(years[df["county_name"] == county_label])
+        if len(have) < MIN_YEARS_WITH_DATA:
+            raise FetchError(f"{county_label} weather has data for only {len(have)} years")
+        missing = sorted(set(range(START_YEAR, END_YEAR + 1)) - have)
         if missing:
-            raise FetchError(f"{county_label} weather has no data for years: {missing}")
+            print(f"    [NOTE] {county_label}: no observations in {missing} (left blank)")
     return df
 
 

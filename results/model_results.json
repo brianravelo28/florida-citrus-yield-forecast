@@ -1,38 +1,38 @@
 {
   "arima": {
     "model_name": "ARIMA(1,1,1)",
-    "rmse": 5860.494778873037,
-    "mae": 5775.0282381007155,
-    "forecast_2023": 11902.248325311893,
-    "forecast_2024": 11797.808150889538
+    "rmse": 5860.494769425127,
+    "mae": 5775.02822666704,
+    "forecast_2023": 11902.248324568307,
+    "forecast_2024": 11797.808128765773
   },
   "lightgbm": {
     "model_name": "LightGBM",
-    "rmse": 10456.524934603258,
-    "mae": 10418.548873265076,
+    "rmse": 10521.439723204294,
+    "mae": 10507.679624525164,
     "feature_importance": {
-      "tmax_mean_grow": 44,
-      "tmin_mean_grow": 42,
-      "frost_days_bloom": 19,
-      "precip_total_grow": 21,
-      "precip_rolling_30": 6,
-      "precip_rolling_60": 10,
-      "precip_rolling_90": 0,
-      "temp_variance_grow": 8,
-      "gdd_total_grow": 36,
+      "tmax_mean_grow": 10,
+      "tmin_mean_grow": 17,
+      "frost_days_bloom": 32,
+      "precip_total_grow": 56,
+      "precip_rolling_30": 15,
+      "precip_rolling_60": 5,
+      "precip_rolling_90": 24,
+      "temp_variance_grow": 24,
+      "gdd_total_grow": 0,
       "precip_deviation": 0,
-      "yield_lag1": 57,
-      "year_numeric": 42
+      "yield_lag1": 26,
+      "year_numeric": 54
     },
     "top_features": [
-      "yield_lag1",
-      "tmax_mean_grow",
-      "tmin_mean_grow",
+      "precip_total_grow",
       "year_numeric",
-      "gdd_total_grow"
+      "frost_days_bloom",
+      "yield_lag1",
+      "precip_rolling_90"
     ],
-    "forecast_2023": 16438.91569843698,
-    "forecast_2024": 16548.182048093175
+    "forecast_2023": 15099.755134136472,
+    "forecast_2024": 18065.604114913862
   },
   "naive": {
     "description": "Predict last year's yield. one_step uses the previous year's actual yield; multi_step repeats the last training-year (2022) yield for both test years.",
@@ -51,23 +51,24 @@
   },
   "rolling_origin": {
     "description": "One-step-ahead rolling origin, test years 2008-2024 (17 folds); each fold trains only on earlier years.",
+    "skipped_years": [],
     "first_test_year": 2008,
     "n_folds": 17,
     "rmse": {
       "persistence": 4221.882072641788,
-      "arima": 4290.363631650137,
-      "lightgbm": 6781.638025748855
+      "arima": 4289.260855665347,
+      "lightgbm": 7277.7034452418975
     },
     "mae": {
       "persistence": 3531.176470588235,
-      "arima": 3574.536311104498,
-      "lightgbm": 5678.18488289114
+      "arima": 3566.4591137011366,
+      "lightgbm": 6014.76001865321
     },
     "rmse_last5": {
       "persistence": 3579.91899349692,
-      "arima": 3767.276166125324,
-      "lightgbm": 7385.133892241165
+      "arima": 3767.2792550342538,
+      "lightgbm": 8362.909947068614
     },
-    "folds_with_arima_convergence_warning": 1
+    "folds_with_arima_convergence_warning": 0
   }
 }

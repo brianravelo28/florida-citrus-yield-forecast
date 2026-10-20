@@ -1,6 +1,6 @@
 # API Sources and Notes
 
-How this project queries USDA NASS and NOAA, plus the non-obvious behaviors that cost time to discover. API keys are free; export them as the `NASS_KEY` and `NOAA_TOKEN` environment variables. Both fetch scripts read them at run time and stop with a clear message if they are unset; no key is stored in the code.
+How this project queries USDA NASS and NOAA, plus the non-obvious behaviors that cost time to discover. API keys are free; export them as the `NASS_KEY` and `NOAA_API_KEY` environment variables (`NOAA_TOKEN` is accepted as an alternative name for the NOAA key). Both fetch scripts read them at run time and stop with a clear message if they are unset; no key is stored in the code.
 
 ## USDA NASS QuickStats
 
@@ -34,7 +34,7 @@ Things to know:
 Docs: <https://www.ncei.noaa.gov/cdo-web/webservices/v2>
 
 ```
-GET https://www.ncei.noaa.gov/cdo-web/api/v2/data        (header: token: <NOAA_TOKEN>)
+GET https://www.ncei.noaa.gov/cdo-web/api/v2/data        (header: token: <NOAA_API_KEY>)
   datasetid=GHCND  stationid=GHCND:<id>  startdate=YYYY-01-01  enddate=YYYY-12-31
   datatypeid=TMAX,TMIN,PRCP  units=standard  limit=1000  offset=1
 ```
@@ -48,26 +48,27 @@ Things to know:
 - **`units=standard` returns TMAX/TMIN in degrees F and PRCP in inches**, already decimal (no tenths decoding).
 - **Documented limits are 5 requests/second and 10,000/day** per token; the fetchers sleep 0.2 s between requests.
 - **The newer `access/services/data/v1` endpoint (`global-summary-of-the-day`) returned empty results** for every station tried here and is not used.
-- **The station catalog is not evidence of data.** In our tests `/datatypes` ignored the `datatypeid` filter and returned a truncated list, and registered date ranges did not guarantee observations exist. Bartow Municipal (`USW00012809`) is registered from 1955 but returned no observations in any year tested (1990-2024). Confirm a station by requesting actual observations across several years inside its registered range.
+- **The station catalog is not evidence of data.** In our tests `/datatypes` ignored the `datatypeid` filter and returned a truncated list, and registered date ranges did not guarantee observations exist. Bartow Municipal (`USW00012809`) is registered from 1955 but returned no observations in any year tested (1990-2024). Confirm a station by requesting actual observations across several years inside its registered range; `src/station_coverage.py` does this for every candidate.
+- **Find a station's county with `/stations?locationid=FIPS:<county>`.** Station names mislead: Moore Haven Lock 1 is listed under Glades County, not Hendry; Tampa International under Hillsborough; Orlando Executive under Orange; Punta Gorda Airport under Charlotte.
 - **IDs are easy to mix up:** `USW00012834` is Daytona Beach International, not Lakeland.
 - **Co-op (`USC`) stations contain isolated sensor errors** (e.g. a 115 F daily high, 101 F daily lows). Both fetchers apply the plausibility filter described in `docs/METHODOLOGY.md`.
-- **Requests fail loudly.** Both `fetch_data.py` and `fetch_county_data.py` share one client (`get_json`) that retries three times, then stops and writes nothing; neither has a substitute-data fallback. A year with no observations at a station is legitimate (stations start and stop) and is not an error.
-- **Published data can change.** NOAA backfilled 27 missing days of February 2018 at Lakeland Linder between two fetches a month apart, with no existing values altered. Treat a fetch as a snapshot of that date.
+- **Requests fail loudly.** Both `fetch_data.py` and `fetch_county_data.py` share one client (`get_json`) that retries three times, then stops and writes nothing; neither has a substitute-data fallback. A year with no observations at a station is legitimate (stations start and stop): it is reported and left blank, not an error. A county station with data in fewer than 20 years is treated as a wrong station id and stops the run.
+- **Published data can change.** NOAA backfilled 27 missing days of February 2018 at Lakeland Linder between two fetches a month apart, with no existing values altered (that station is no longer used). Treat a fetch as a snapshot of that date.
 
 ## Stations used
 
-Catalog date ranges are shown for reference only and are not actual coverage. For example, NOAA has no records for Lakeland Linder in 1996-2010 or Orlando Executive before 1998 (see the station timeline in `docs/METHODOLOGY.md`).
+Catalog date ranges are not actual coverage. For observed coverage by year, see `data/station_coverage_matrix.csv` and the table in [METHODOLOGY.md](METHODOLOGY.md#weather-stations). Counties are from NOAA's station metadata.
 
-| Station | ID | Used for | Catalog range |
+| Station | ID | County | Used for |
 |---|---|---|---|
-| Lakeland Linder | USW00012883 | Statewide model, Polk | 1948- |
-| Tampa International | USW00012842 | Statewide model, Polk | 1939- |
-| Orlando Executive | USW00012841 | Statewide model, Polk | 1892- |
-| Sebring | USW00092827 | Statewide model, Polk, Highlands | 2007-12- |
-| La Belle | USC00084662 | Hendry | 1929-2019-05 |
-| Moore Haven Lock 1 | USC00085895 | Hendry | 1918- |
-| Arcadia | USC00080228 | DeSoto | 1899-2021-04 |
-| Punta Gorda Airport | USW00012812 | DeSoto | 1996-10- |
-| Avon Park 2 W | USC00080369 | Highlands | 1892-2022-04 |
+| Tampa International | USW00012842 | Hillsborough | Statewide model (fixed pair) |
+| Archbold Biological Station | USC00080236 | Highlands | Statewide model (fixed pair); Highlands panel |
+| Lakeland 2 | USC00084802 | Polk | Polk panel |
+| Moore Haven Lock 1 | USC00085895 | Glades | Hendry panel (nearest usable station; see METHODOLOGY) |
+| Arcadia | USC00080228 | DeSoto | DeSoto panel |
 
-Not used: Bartow Municipal (no observations, above). Clewiston (`USC00081654`) returns real TMAX/TMIN/PRCP for 1990-2003 (sparse in some years) and could strengthen Hendry's early record, but is not currently included.
+Probed but not used (coverage in `data/station_coverage_matrix.csv`): Lakeland Linder (`USW00012883`), Orlando Executive (`USW00012841`), Sebring (`USW00092827`), La Belle (`USC00084662`), Punta Gorda Airport (`USW00012812`), Avon Park 2 W (`USC00080369`), Bartow 1 SE (`USC00080478`), Lake Alfred (`USC00084707`), Mountain Lake (`USC00085973`), Winter Haven (`USC00089707`) and Gilbert Airport (`USW00012876`), Big Cypress (`USC00080737`), Clewiston (`USC00081654`) and Clewiston No. 2 (`USC00081651`), Devils Garden (`USC00082298`). The first four were the earlier version's statewide stations; the earlier county stations included La Belle, Punta Gorda Airport and Avon Park 2 W.
+
+## Another source: FAWN
+
+The University of Florida's Florida Automated Weather Network (FAWN) publishes open daily-summary CSVs by year (1997 onward) and by station at `https://fawn.ifas.ufl.edu/data/fawnpub/daily_summaries/`, with stations in growing areas (for example Lake Alfred, Frostproof, Arcadia, Sebring, Clewiston). It was assessed on 2026-10-20 and not used: it starts in 1997, years are not complete for many stations (Lake Alfred has a complete bloom window in 21 of 28 years, Arcadia 16, Clewiston 14), and the files have several header formats, split-year files, sentinel values such as -6999, and implausible readings (-63 C). Temperatures are in C and rain in inches. It could be added later for the county panels.

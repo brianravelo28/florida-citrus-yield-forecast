@@ -1,6 +1,6 @@
 """
-Fetch Florida orange yield (USDA NASS) and central-Florida daily weather
-(NOAA GHCND) for 1990-2024.
+Fetch Florida orange yield (USDA NASS) and daily weather from two fixed NOAA
+GHCND stations (Tampa, Archbold) for 1990-2024.
 
 If any API call fails, the run stops with an error and writes nothing.
 There is deliberately no fallback to substitute data: a failed fetch must
@@ -50,6 +50,14 @@ def require_key(name):
     if not value:
         raise FetchError(f"{name} is not set. Get a free key (see README) and export it as an environment variable.")
     return value
+
+
+def noaa_token():
+    """NOAA CDO token from NOAA_API_KEY (preferred) or NOAA_TOKEN."""
+    for name in ("NOAA_API_KEY", "NOAA_TOKEN"):
+        if os.environ.get(name, "").strip():
+            return require_key(name)
+    raise FetchError("NOAA_API_KEY is not set. Get a free token (see README) and export it as an environment variable.")
 
 
 def is_plausible(datatype, value):
@@ -145,24 +153,22 @@ def fetch_noaa_weather():
     """Fetch daily TMAX/TMIN/PRCP from NOAA CDO v2 for central Florida stations."""
     print("Fetching NOAA weather data...")
 
-    # GHCND airport station IDs, verified to return TMAX/TMIN/PRCP.
-    # Lakeland Linder is physically inside Polk County; Tampa and Orlando
-    # are the nearest major hubs. Coverage is NOT continuous: NOAA has no
-    # records for Lakeland in 1996-2010 or for Orlando before 1998, and
-    # Sebring starts 2007-12-09. The per-day average therefore uses a
-    # different set of stations in different years (see
-    # docs/METHODOLOGY.md); pivot averaging just skips missing stations.
-    # (Bartow, also in Polk County, only reports PRCP - no temperature
-    # data - so it's excluded entirely.)
+    # A fixed pair of stations. Of the 20 candidates probed
+    # (src/station_coverage.py, docs/METHODOLOGY.md), only these two report
+    # every year of 1990-2024 with at most a few missing days: Tampa
+    # International (Hillsborough, Gulf coast) and the Archbold Biological
+    # Station (Highlands, south-central). Neither is in the Polk groves, so
+    # the series is a stable regional proxy, not a citrus-belt average. The
+    # earlier four-station set changed membership by year (a single station
+    # in 1996-98, Sebring added in 2008), which made trends in frost and
+    # minimum temperature partly an artifact of which stations reported.
     stations = {
-        "Lakeland Linder": "USW00012883",
         "Tampa International": "USW00012842",
-        "Orlando Executive": "USW00012841",
-        "Sebring": "USW00092827",
+        "Archbold Biological Station": "USC00080236",
     }
 
     url = "https://www.ncei.noaa.gov/cdo-web/api/v2/data"
-    headers = {"token": require_key("NOAA_TOKEN")}
+    headers = {"token": noaa_token()}
 
     all_weather = []
 

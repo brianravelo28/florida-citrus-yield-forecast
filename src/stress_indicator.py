@@ -1,5 +1,11 @@
 """
-Calculate climate stress indicator for citrus yields.
+Calculate the climate stress indicator for Florida orange yields.
+
+The score is a weighted sum of four terms (weights 0.4 / 0.3 / 0.2 / 0.1):
+bloom-season frost days, growing-season precipitation deviation, inverse
+growing degree days, and a flag for the SAME year's yield being below the
+25th percentile. It is an unvalidated heuristic, and the yield flag means it
+is not a pure weather measure.
 """
 
 import pandas as pd
@@ -15,7 +21,7 @@ def calculate_stress_indicator(df):
     - Frost days during bloom (Jan-Mar)
     - Precipitation deviation from normal (growing season)
     - GDD relative to historical mean
-    - Lag-1 yield health
+    - Whether this year's yield is below the 25th percentile (same year, not lagged)
     """
 
     df_stress = df.copy()
@@ -28,7 +34,9 @@ def calculate_stress_indicator(df):
     gdd_mean = hist_period['gdd_total_grow'].mean()
     yield_p25 = hist_period['yield_lbs_acre'].quantile(0.25)
 
-    # Avoid division by zero
+    # Avoid division by zero (frost_p75 is 0 in a series where most winters have no frost)
+    if frost_p75 == 0:
+        frost_p75 = 1
     if precip_std == 0:
         precip_std = 1
     if gdd_mean == 0:
@@ -87,7 +95,7 @@ def main():
     print(recent.to_string(index=False))
 
     print("\n" + "=" * 60)
-    print("Next: Run src/build_dashboard.py to create Plotly Dash app")
+    print("Next: python run_dashboard.py to view the Dash app")
     print("=" * 60)
 
 

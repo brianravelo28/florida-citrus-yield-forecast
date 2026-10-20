@@ -1,0 +1,701 @@
+station,year,bloom_tmin_days,bloom_days_needed,grow_tmax_days,grow_tmin_days,grow_prcp_days
+Lakeland Linder,1990,90,90,123,123,123
+Lakeland Linder,1991,90,90,123,123,123
+Lakeland Linder,1992,91,91,123,123,123
+Lakeland Linder,1993,90,90,123,123,123
+Lakeland Linder,1994,90,90,123,123,123
+Lakeland Linder,1995,90,90,123,123,123
+Lakeland Linder,1996,0,91,0,0,0
+Lakeland Linder,1997,0,90,0,0,0
+Lakeland Linder,1998,0,90,0,0,0
+Lakeland Linder,1999,0,90,0,0,0
+Lakeland Linder,2000,0,91,0,0,0
+Lakeland Linder,2001,0,90,0,0,0
+Lakeland Linder,2002,0,90,0,0,0
+Lakeland Linder,2003,0,90,0,0,0
+Lakeland Linder,2004,0,91,0,0,0
+Lakeland Linder,2005,0,90,0,0,0
+Lakeland Linder,2006,0,90,0,0,0
+Lakeland Linder,2007,0,90,0,0,0
+Lakeland Linder,2008,0,91,0,0,0
+Lakeland Linder,2009,0,90,0,0,0
+Lakeland Linder,2010,0,90,0,0,0
+Lakeland Linder,2011,0,90,0,0,0
+Lakeland Linder,2012,90,91,122,122,122
+Lakeland Linder,2013,90,90,123,123,123
+Lakeland Linder,2014,90,90,123,123,123
+Lakeland Linder,2015,90,90,122,122,122
+Lakeland Linder,2016,91,91,122,122,122
+Lakeland Linder,2017,88,90,123,123,123
+Lakeland Linder,2018,78,90,122,122,120
+Lakeland Linder,2019,90,90,110,110,110
+Lakeland Linder,2020,91,91,123,123,123
+Lakeland Linder,2021,90,90,123,123,123
+Lakeland Linder,2022,81,90,118,117,119
+Lakeland Linder,2023,88,90,123,123,123
+Lakeland Linder,2024,91,91,123,123,122
+Tampa International,1990,90,90,123,123,123
+Tampa International,1991,90,90,123,123,123
+Tampa International,1992,91,91,123,123,123
+Tampa International,1993,90,90,123,123,123
+Tampa International,1994,90,90,123,123,123
+Tampa International,1995,90,90,123,123,123
+Tampa International,1996,91,91,123,123,123
+Tampa International,1997,90,90,123,123,123
+Tampa International,1998,90,90,123,123,123
+Tampa International,1999,90,90,123,123,123
+Tampa International,2000,91,91,123,123,123
+Tampa International,2001,90,90,123,123,123
+Tampa International,2002,90,90,123,123,123
+Tampa International,2003,90,90,123,123,123
+Tampa International,2004,91,91,123,123,123
+Tampa International,2005,90,90,123,123,123
+Tampa International,2006,90,90,123,123,123
+Tampa International,2007,90,90,123,123,123
+Tampa International,2008,91,91,123,123,123
+Tampa International,2009,90,90,123,123,123
+Tampa International,2010,90,90,123,123,123
+Tampa International,2011,90,90,123,123,123
+Tampa International,2012,91,91,123,123,123
+Tampa International,2013,90,90,123,123,123
+Tampa International,2014,90,90,123,123,123
+Tampa International,2015,90,90,123,123,123
+Tampa International,2016,91,91,123,123,123
+Tampa International,2017,90,90,123,123,123
+Tampa International,2018,90,90,123,123,123
+Tampa International,2019,90,90,122,121,123
+Tampa International,2020,91,91,123,123,123
+Tampa International,2021,90,90,123,123,123
+Tampa International,2022,90,90,123,123,123
+Tampa International,2023,90,90,123,123,123
+Tampa International,2024,91,91,123,123,123
+Orlando Executive,1990,0,90,0,0,0
+Orlando Executive,1991,0,90,0,0,0
+Orlando Executive,1992,0,91,0,0,0
+Orlando Executive,1993,0,90,0,0,0
+Orlando Executive,1994,0,90,0,0,0
+Orlando Executive,1995,0,90,0,0,0
+Orlando Executive,1996,0,91,0,0,0
+Orlando Executive,1997,0,90,0,0,0
+Orlando Executive,1998,0,90,87,87,87
+Orlando Executive,1999,90,90,123,123,123
+Orlando Executive,2000,91,91,119,119,121
+Orlando Executive,2001,90,90,120,120,123
+Orlando Executive,2002,90,90,120,120,123
+Orlando Executive,2003,90,90,119,119,122
+Orlando Executive,2004,91,91,118,118,121
+Orlando Executive,2005,90,90,123,123,123
+Orlando Executive,2006,90,90,123,123,123
+Orlando Executive,2007,90,90,121,121,123
+Orlando Executive,2008,91,91,121,121,123
+Orlando Executive,2009,90,90,122,122,123
+Orlando Executive,2010,90,90,123,123,123
+Orlando Executive,2011,88,90,123,123,123
+Orlando Executive,2012,90,91,123,123,123
+Orlando Executive,2013,90,90,123,123,123
+Orlando Executive,2014,90,90,123,123,123
+Orlando Executive,2015,90,90,123,123,123
+Orlando Executive,2016,91,91,123,123,123
+Orlando Executive,2017,90,90,123,123,123
+Orlando Executive,2018,90,90,123,123,123
+Orlando Executive,2019,90,90,123,123,123
+Orlando Executive,2020,91,91,123,123,123
+Orlando Executive,2021,90,90,123,123,123
+Orlando Executive,2022,90,90,123,123,123
+Orlando Executive,2023,90,90,123,123,123
+Orlando Executive,2024,91,91,123,123,123
+Sebring,1990,0,90,0,0,0
+Sebring,1991,0,90,0,0,0
+Sebring,1992,0,91,0,0,0
+Sebring,1993,0,90,0,0,0
+Sebring,1994,0,90,0,0,0
+Sebring,1995,0,90,0,0,0
+Sebring,1996,0,91,0,0,0
+Sebring,1997,0,90,0,0,0
+Sebring,1998,0,90,0,0,0
+Sebring,1999,0,90,0,0,0
+Sebring,2000,0,91,0,0,0
+Sebring,2001,0,90,0,0,0
+Sebring,2002,0,90,0,0,0
+Sebring,2003,0,90,0,0,0
+Sebring,2004,0,91,0,0,0
+Sebring,2005,0,90,0,0,0
+Sebring,2006,0,90,0,0,0
+Sebring,2007,0,90,0,0,0
+Sebring,2008,90,91,123,123,123
+Sebring,2009,89,90,123,123,123
+Sebring,2010,89,90,123,123,123
+Sebring,2011,89,90,123,123,120
+Sebring,2012,91,91,123,123,123
+Sebring,2013,90,90,123,123,123
+Sebring,2014,89,90,123,123,123
+Sebring,2015,90,90,123,123,123
+Sebring,2016,91,91,117,117,118
+Sebring,2017,89,90,120,120,121
+Sebring,2018,89,90,123,123,123
+Sebring,2019,89,90,123,123,123
+Sebring,2020,89,91,123,123,123
+Sebring,2021,89,90,123,123,123
+Sebring,2022,89,90,122,122,9
+Sebring,2023,89,90,123,123,123
+Sebring,2024,90,91,123,123,123
+La Belle,1990,87,90,94,94,119
+La Belle,1991,63,90,84,84,90
+La Belle,1992,59,91,82,82,110
+La Belle,1993,61,90,77,70,83
+La Belle,1994,51,90,79,79,82
+La Belle,1995,58,90,86,86,94
+La Belle,1996,63,91,73,73,71
+La Belle,1997,63,90,85,85,88
+La Belle,1998,62,90,75,74,87
+La Belle,1999,64,90,59,59,75
+La Belle,2000,64,91,63,53,104
+La Belle,2001,64,90,0,0,31
+La Belle,2002,0,90,0,0,0
+La Belle,2003,78,90,107,105,115
+La Belle,2004,74,91,115,116,116
+La Belle,2005,88,90,54,52,53
+La Belle,2006,0,90,0,0,0
+La Belle,2007,0,90,0,0,0
+La Belle,2008,59,91,119,119,117
+La Belle,2009,88,90,121,121,115
+La Belle,2010,90,90,123,123,113
+La Belle,2011,90,90,123,123,123
+La Belle,2012,91,91,123,123,121
+La Belle,2013,90,90,123,123,117
+La Belle,2014,90,90,123,123,111
+La Belle,2015,90,90,123,123,123
+La Belle,2016,90,91,120,120,117
+La Belle,2017,88,90,123,123,123
+La Belle,2018,90,90,123,123,123
+La Belle,2019,90,90,31,31,31
+La Belle,2020,0,91,0,0,0
+La Belle,2021,0,90,0,0,0
+La Belle,2022,0,90,0,0,0
+La Belle,2023,0,90,0,0,0
+La Belle,2024,0,91,0,0,0
+Moore Haven Lock 1,1990,90,90,123,123,123
+Moore Haven Lock 1,1991,90,90,123,123,123
+Moore Haven Lock 1,1992,91,91,123,123,123
+Moore Haven Lock 1,1993,90,90,121,121,123
+Moore Haven Lock 1,1994,89,90,123,123,123
+Moore Haven Lock 1,1995,90,90,86,87,93
+Moore Haven Lock 1,1996,91,91,123,123,123
+Moore Haven Lock 1,1997,90,90,123,123,123
+Moore Haven Lock 1,1998,90,90,123,123,123
+Moore Haven Lock 1,1999,90,90,123,123,123
+Moore Haven Lock 1,2000,91,91,123,123,123
+Moore Haven Lock 1,2001,90,90,122,123,123
+Moore Haven Lock 1,2002,89,90,121,121,123
+Moore Haven Lock 1,2003,90,90,119,119,123
+Moore Haven Lock 1,2004,90,91,123,123,123
+Moore Haven Lock 1,2005,90,90,123,123,123
+Moore Haven Lock 1,2006,90,90,122,122,123
+Moore Haven Lock 1,2007,90,90,123,123,123
+Moore Haven Lock 1,2008,91,91,118,118,123
+Moore Haven Lock 1,2009,90,90,122,122,121
+Moore Haven Lock 1,2010,90,90,123,123,123
+Moore Haven Lock 1,2011,90,90,123,123,123
+Moore Haven Lock 1,2012,91,91,123,123,123
+Moore Haven Lock 1,2013,90,90,123,123,123
+Moore Haven Lock 1,2014,90,90,123,123,123
+Moore Haven Lock 1,2015,90,90,123,123,123
+Moore Haven Lock 1,2016,91,91,123,123,123
+Moore Haven Lock 1,2017,90,90,122,122,123
+Moore Haven Lock 1,2018,90,90,122,122,122
+Moore Haven Lock 1,2019,90,90,120,120,120
+Moore Haven Lock 1,2020,91,91,115,115,115
+Moore Haven Lock 1,2021,48,90,83,83,83
+Moore Haven Lock 1,2022,49,90,108,108,108
+Moore Haven Lock 1,2023,73,90,117,117,117
+Moore Haven Lock 1,2024,89,91,120,120,120
+Arcadia,1990,90,90,123,123,34
+Arcadia,1991,62,90,121,121,120
+Arcadia,1992,91,91,123,123,102
+Arcadia,1993,59,90,29,29,29
+Arcadia,1994,34,90,123,123,123
+Arcadia,1995,90,90,119,119,123
+Arcadia,1996,91,91,119,119,119
+Arcadia,1997,90,90,123,123,122
+Arcadia,1998,90,90,120,120,123
+Arcadia,1999,47,90,123,123,123
+Arcadia,2000,91,91,118,118,123
+Arcadia,2001,83,90,114,114,123
+Arcadia,2002,89,90,89,90,123
+Arcadia,2003,90,90,123,123,123
+Arcadia,2004,91,91,119,118,121
+Arcadia,2005,90,90,123,123,123
+Arcadia,2006,90,90,123,123,122
+Arcadia,2007,90,90,123,123,123
+Arcadia,2008,90,91,123,123,123
+Arcadia,2009,90,90,123,123,123
+Arcadia,2010,90,90,123,123,123
+Arcadia,2011,90,90,123,123,123
+Arcadia,2012,91,91,123,123,123
+Arcadia,2013,90,90,123,123,123
+Arcadia,2014,90,90,123,123,123
+Arcadia,2015,90,90,123,123,123
+Arcadia,2016,90,91,123,123,123
+Arcadia,2017,90,90,123,123,123
+Arcadia,2018,90,90,123,123,123
+Arcadia,2019,90,90,118,118,118
+Arcadia,2020,91,91,121,122,123
+Arcadia,2021,90,90,0,0,0
+Arcadia,2022,0,90,0,0,0
+Arcadia,2023,0,90,0,0,0
+Arcadia,2024,0,91,0,0,0
+Punta Gorda Airport,1990,0,90,0,0,0
+Punta Gorda Airport,1991,0,90,0,0,0
+Punta Gorda Airport,1992,0,91,0,0,0
+Punta Gorda Airport,1993,0,90,0,0,0
+Punta Gorda Airport,1994,0,90,0,0,0
+Punta Gorda Airport,1995,0,90,0,0,0
+Punta Gorda Airport,1996,0,91,0,0,0
+Punta Gorda Airport,1997,88,90,123,123,0
+Punta Gorda Airport,1998,84,90,74,74,123
+Punta Gorda Airport,1999,90,90,119,119,123
+Punta Gorda Airport,2000,91,91,114,114,120
+Punta Gorda Airport,2001,90,90,121,121,123
+Punta Gorda Airport,2002,88,90,121,121,121
+Punta Gorda Airport,2003,88,90,122,122,123
+Punta Gorda Airport,2004,87,91,116,116,117
+Punta Gorda Airport,2005,90,90,123,123,123
+Punta Gorda Airport,2006,90,90,121,121,123
+Punta Gorda Airport,2007,90,90,123,123,123
+Punta Gorda Airport,2008,91,91,121,121,116
+Punta Gorda Airport,2009,90,90,123,123,123
+Punta Gorda Airport,2010,90,90,123,123,123
+Punta Gorda Airport,2011,87,90,122,122,121
+Punta Gorda Airport,2012,90,91,123,123,122
+Punta Gorda Airport,2013,89,90,123,123,123
+Punta Gorda Airport,2014,90,90,123,123,123
+Punta Gorda Airport,2015,89,90,123,123,123
+Punta Gorda Airport,2016,91,91,123,123,123
+Punta Gorda Airport,2017,89,90,123,123,123
+Punta Gorda Airport,2018,90,90,123,123,123
+Punta Gorda Airport,2019,90,90,123,123,123
+Punta Gorda Airport,2020,91,91,123,123,123
+Punta Gorda Airport,2021,90,90,123,123,123
+Punta Gorda Airport,2022,90,90,123,123,123
+Punta Gorda Airport,2023,90,90,123,123,123
+Punta Gorda Airport,2024,90,91,123,123,123
+Avon Park 2 W,1990,89,90,123,123,123
+Avon Park 2 W,1991,90,90,123,123,123
+Avon Park 2 W,1992,91,91,123,123,123
+Avon Park 2 W,1993,90,90,123,123,123
+Avon Park 2 W,1994,89,90,123,123,123
+Avon Park 2 W,1995,89,90,123,123,123
+Avon Park 2 W,1996,90,91,120,120,123
+Avon Park 2 W,1997,87,90,121,121,123
+Avon Park 2 W,1998,85,90,123,123,123
+Avon Park 2 W,1999,90,90,123,123,123
+Avon Park 2 W,2000,90,91,122,122,122
+Avon Park 2 W,2001,89,90,122,122,122
+Avon Park 2 W,2002,90,90,122,122,123
+Avon Park 2 W,2003,90,90,122,122,123
+Avon Park 2 W,2004,91,91,113,113,117
+Avon Park 2 W,2005,90,90,123,123,123
+Avon Park 2 W,2006,90,90,122,123,123
+Avon Park 2 W,2007,90,90,123,123,123
+Avon Park 2 W,2008,76,91,121,91,123
+Avon Park 2 W,2009,90,90,111,111,115
+Avon Park 2 W,2010,90,90,123,123,123
+Avon Park 2 W,2011,87,90,106,106,115
+Avon Park 2 W,2012,76,91,102,101,97
+Avon Park 2 W,2013,72,90,104,104,95
+Avon Park 2 W,2014,83,90,103,103,84
+Avon Park 2 W,2015,70,90,71,71,57
+Avon Park 2 W,2016,40,91,103,103,47
+Avon Park 2 W,2017,89,90,123,123,86
+Avon Park 2 W,2018,89,90,91,90,86
+Avon Park 2 W,2019,87,90,122,122,86
+Avon Park 2 W,2020,91,91,119,119,75
+Avon Park 2 W,2021,88,90,117,115,77
+Avon Park 2 W,2022,88,90,0,0,0
+Avon Park 2 W,2023,0,90,0,0,0
+Avon Park 2 W,2024,0,91,0,0,0
+Bartow 1 SE,1990,85,90,121,119,123
+Bartow 1 SE,1991,85,90,120,119,121
+Bartow 1 SE,1992,90,91,121,121,123
+Bartow 1 SE,1993,87,90,120,120,117
+Bartow 1 SE,1994,89,90,123,123,123
+Bartow 1 SE,1995,88,90,123,123,123
+Bartow 1 SE,1996,88,91,121,121,123
+Bartow 1 SE,1997,89,90,123,123,123
+Bartow 1 SE,1998,89,90,123,120,123
+Bartow 1 SE,1999,87,90,123,123,123
+Bartow 1 SE,2000,89,91,120,116,122
+Bartow 1 SE,2001,82,90,120,116,122
+Bartow 1 SE,2002,90,90,118,115,118
+Bartow 1 SE,2003,84,90,120,117,117
+Bartow 1 SE,2004,86,91,113,106,114
+Bartow 1 SE,2005,80,90,119,117,121
+Bartow 1 SE,2006,84,90,122,113,123
+Bartow 1 SE,2007,70,90,105,104,119
+Bartow 1 SE,2008,80,91,112,113,116
+Bartow 1 SE,2009,90,90,117,117,119
+Bartow 1 SE,2010,87,90,116,117,115
+Bartow 1 SE,2011,87,90,119,119,115
+Bartow 1 SE,2012,91,91,122,122,103
+Bartow 1 SE,2013,25,90,123,123,112
+Bartow 1 SE,2014,90,90,123,119,123
+Bartow 1 SE,2015,84,90,76,75,75
+Bartow 1 SE,2016,91,91,123,123,116
+Bartow 1 SE,2017,90,90,123,123,116
+Bartow 1 SE,2018,90,90,123,123,114
+Bartow 1 SE,2019,90,90,121,121,123
+Bartow 1 SE,2020,91,91,123,123,123
+Bartow 1 SE,2021,90,90,123,123,114
+Bartow 1 SE,2022,90,90,123,123,123
+Bartow 1 SE,2023,90,90,123,123,123
+Bartow 1 SE,2024,91,91,123,123,123
+Lake Alfred Exp Station,1990,90,90,123,123,123
+Lake Alfred Exp Station,1991,90,90,119,119,121
+Lake Alfred Exp Station,1992,91,91,123,123,123
+Lake Alfred Exp Station,1993,84,90,123,123,123
+Lake Alfred Exp Station,1994,90,90,123,123,123
+Lake Alfred Exp Station,1995,90,90,123,123,123
+Lake Alfred Exp Station,1996,91,91,122,122,123
+Lake Alfred Exp Station,1997,89,90,120,119,121
+Lake Alfred Exp Station,1998,90,90,122,122,123
+Lake Alfred Exp Station,1999,90,90,121,122,122
+Lake Alfred Exp Station,2000,90,91,118,118,118
+Lake Alfred Exp Station,2001,0,90,0,0,0
+Lake Alfred Exp Station,2002,0,90,0,0,0
+Lake Alfred Exp Station,2003,0,90,0,0,0
+Lake Alfred Exp Station,2004,0,91,0,0,0
+Lake Alfred Exp Station,2005,0,90,0,0,0
+Lake Alfred Exp Station,2006,0,90,0,0,0
+Lake Alfred Exp Station,2007,0,90,0,0,0
+Lake Alfred Exp Station,2008,0,91,0,0,0
+Lake Alfred Exp Station,2009,0,90,0,0,0
+Lake Alfred Exp Station,2010,0,90,0,0,0
+Lake Alfred Exp Station,2011,0,90,0,0,0
+Lake Alfred Exp Station,2012,0,91,0,0,0
+Lake Alfred Exp Station,2013,0,90,0,0,0
+Lake Alfred Exp Station,2014,0,90,0,0,0
+Lake Alfred Exp Station,2015,0,90,0,0,0
+Lake Alfred Exp Station,2016,0,91,0,0,0
+Lake Alfred Exp Station,2017,0,90,0,0,0
+Lake Alfred Exp Station,2018,0,90,0,0,0
+Lake Alfred Exp Station,2019,0,90,0,0,0
+Lake Alfred Exp Station,2020,0,91,0,0,0
+Lake Alfred Exp Station,2021,0,90,0,0,0
+Lake Alfred Exp Station,2022,0,90,0,0,0
+Lake Alfred Exp Station,2023,0,90,0,0,0
+Lake Alfred Exp Station,2024,0,91,0,0,0
+Lakeland 2,1990,0,90,0,0,0
+Lakeland 2,1991,0,90,0,0,0
+Lakeland 2,1992,0,91,0,0,0
+Lakeland 2,1993,0,90,0,0,0
+Lakeland 2,1994,0,90,0,0,0
+Lakeland 2,1995,0,90,0,0,0
+Lakeland 2,1996,91,91,123,123,123
+Lakeland 2,1997,90,90,123,123,123
+Lakeland 2,1998,90,90,123,123,123
+Lakeland 2,1999,90,90,123,123,123
+Lakeland 2,2000,91,91,123,123,123
+Lakeland 2,2001,90,90,123,123,123
+Lakeland 2,2002,90,90,123,123,123
+Lakeland 2,2003,90,90,123,123,123
+Lakeland 2,2004,91,91,123,123,123
+Lakeland 2,2005,90,90,123,123,123
+Lakeland 2,2006,90,90,123,123,123
+Lakeland 2,2007,90,90,123,123,123
+Lakeland 2,2008,91,91,123,123,123
+Lakeland 2,2009,90,90,123,123,123
+Lakeland 2,2010,89,90,123,123,123
+Lakeland 2,2011,90,90,123,123,123
+Lakeland 2,2012,91,91,123,123,123
+Lakeland 2,2013,90,90,122,122,123
+Lakeland 2,2014,89,90,121,121,121
+Lakeland 2,2015,90,90,111,111,107
+Lakeland 2,2016,91,91,123,123,122
+Lakeland 2,2017,90,90,123,123,121
+Lakeland 2,2018,90,90,123,123,119
+Lakeland 2,2019,90,90,123,123,122
+Lakeland 2,2020,91,91,123,123,123
+Lakeland 2,2021,90,90,123,123,123
+Lakeland 2,2022,90,90,119,118,121
+Lakeland 2,2023,90,90,123,123,123
+Lakeland 2,2024,91,91,123,123,123
+Mountain Lake,1990,88,90,118,117,117
+Mountain Lake,1991,88,90,122,122,122
+Mountain Lake,1992,86,91,115,115,123
+Mountain Lake,1993,73,90,118,118,123
+Mountain Lake,1994,90,90,123,123,123
+Mountain Lake,1995,90,90,121,121,123
+Mountain Lake,1996,90,91,117,117,123
+Mountain Lake,1997,90,90,117,115,119
+Mountain Lake,1998,87,90,121,122,123
+Mountain Lake,1999,88,90,119,119,118
+Mountain Lake,2000,91,91,116,116,123
+Mountain Lake,2001,90,90,123,123,123
+Mountain Lake,2002,90,90,109,109,123
+Mountain Lake,2003,90,90,123,123,123
+Mountain Lake,2004,91,91,104,104,111
+Mountain Lake,2005,90,90,105,105,123
+Mountain Lake,2006,82,90,123,123,123
+Mountain Lake,2007,90,90,123,123,123
+Mountain Lake,2008,91,91,123,122,123
+Mountain Lake,2009,90,90,123,123,123
+Mountain Lake,2010,90,90,123,123,123
+Mountain Lake,2011,90,90,123,123,123
+Mountain Lake,2012,91,91,123,123,121
+Mountain Lake,2013,90,90,123,123,123
+Mountain Lake,2014,90,90,123,123,123
+Mountain Lake,2015,90,90,123,123,123
+Mountain Lake,2016,91,91,123,123,123
+Mountain Lake,2017,90,90,123,123,123
+Mountain Lake,2018,90,90,123,123,123
+Mountain Lake,2019,90,90,123,123,123
+Mountain Lake,2020,91,91,122,113,110
+Mountain Lake,2021,90,90,123,123,123
+Mountain Lake,2022,90,90,123,123,123
+Mountain Lake,2023,90,90,123,123,123
+Mountain Lake,2024,91,91,123,123,123
+Winter Haven (co-op),1990,89,90,123,123,123
+Winter Haven (co-op),1991,90,90,122,122,123
+Winter Haven (co-op),1992,31,91,123,123,123
+Winter Haven (co-op),1993,90,90,123,123,123
+Winter Haven (co-op),1994,90,90,123,123,123
+Winter Haven (co-op),1995,90,90,119,118,123
+Winter Haven (co-op),1996,90,91,121,121,123
+Winter Haven (co-op),1997,87,90,107,106,113
+Winter Haven (co-op),1998,83,90,108,107,122
+Winter Haven (co-op),1999,84,90,101,100,106
+Winter Haven (co-op),2000,90,91,122,122,122
+Winter Haven (co-op),2001,90,90,122,122,123
+Winter Haven (co-op),2002,90,90,118,117,123
+Winter Haven (co-op),2003,90,90,123,123,123
+Winter Haven (co-op),2004,90,91,112,112,119
+Winter Haven (co-op),2005,89,90,121,120,123
+Winter Haven (co-op),2006,90,90,123,123,123
+Winter Haven (co-op),2007,89,90,123,123,123
+Winter Haven (co-op),2008,60,91,0,0,0
+Winter Haven (co-op),2009,0,90,0,0,0
+Winter Haven (co-op),2010,0,90,0,0,0
+Winter Haven (co-op),2011,0,90,0,0,0
+Winter Haven (co-op),2012,0,91,0,0,0
+Winter Haven (co-op),2013,0,90,0,0,0
+Winter Haven (co-op),2014,0,90,0,0,0
+Winter Haven (co-op),2015,0,90,0,0,0
+Winter Haven (co-op),2016,0,91,0,0,0
+Winter Haven (co-op),2017,0,90,0,0,0
+Winter Haven (co-op),2018,0,90,0,0,0
+Winter Haven (co-op),2019,0,90,0,0,0
+Winter Haven (co-op),2020,0,91,0,0,0
+Winter Haven (co-op),2021,0,90,0,0,0
+Winter Haven (co-op),2022,0,90,0,0,0
+Winter Haven (co-op),2023,0,90,0,0,0
+Winter Haven (co-op),2024,0,91,0,0,0
+Winter Haven Gilbert Airport,1990,0,90,0,0,0
+Winter Haven Gilbert Airport,1991,0,90,0,0,0
+Winter Haven Gilbert Airport,1992,0,91,0,0,0
+Winter Haven Gilbert Airport,1993,0,90,0,0,0
+Winter Haven Gilbert Airport,1994,0,90,0,0,0
+Winter Haven Gilbert Airport,1995,0,90,0,0,0
+Winter Haven Gilbert Airport,1996,0,91,62,62,0
+Winter Haven Gilbert Airport,1997,89,90,121,121,0
+Winter Haven Gilbert Airport,1998,88,90,110,110,112
+Winter Haven Gilbert Airport,1999,87,90,112,112,119
+Winter Haven Gilbert Airport,2000,90,91,118,118,122
+Winter Haven Gilbert Airport,2001,87,90,123,123,123
+Winter Haven Gilbert Airport,2002,87,90,121,121,123
+Winter Haven Gilbert Airport,2003,86,90,113,113,118
+Winter Haven Gilbert Airport,2004,90,91,115,115,118
+Winter Haven Gilbert Airport,2005,90,90,122,122,123
+Winter Haven Gilbert Airport,2006,90,90,123,123,123
+Winter Haven Gilbert Airport,2007,90,90,120,120,123
+Winter Haven Gilbert Airport,2008,90,91,119,119,123
+Winter Haven Gilbert Airport,2009,88,90,120,120,123
+Winter Haven Gilbert Airport,2010,87,90,120,120,122
+Winter Haven Gilbert Airport,2011,90,90,117,117,123
+Winter Haven Gilbert Airport,2012,90,91,123,123,123
+Winter Haven Gilbert Airport,2013,90,90,123,123,122
+Winter Haven Gilbert Airport,2014,88,90,123,123,123
+Winter Haven Gilbert Airport,2015,87,90,123,123,123
+Winter Haven Gilbert Airport,2016,91,91,123,123,123
+Winter Haven Gilbert Airport,2017,90,90,123,123,123
+Winter Haven Gilbert Airport,2018,90,90,123,123,123
+Winter Haven Gilbert Airport,2019,88,90,123,123,123
+Winter Haven Gilbert Airport,2020,91,91,123,123,123
+Winter Haven Gilbert Airport,2021,90,90,123,123,123
+Winter Haven Gilbert Airport,2022,89,90,121,121,122
+Winter Haven Gilbert Airport,2023,90,90,123,123,123
+Winter Haven Gilbert Airport,2024,91,91,123,123,123
+Archbold Bio Station,1990,90,90,123,123,123
+Archbold Bio Station,1991,90,90,123,123,123
+Archbold Bio Station,1992,91,91,123,123,123
+Archbold Bio Station,1993,90,90,123,123,123
+Archbold Bio Station,1994,90,90,123,123,123
+Archbold Bio Station,1995,90,90,123,123,123
+Archbold Bio Station,1996,91,91,123,123,123
+Archbold Bio Station,1997,90,90,123,123,123
+Archbold Bio Station,1998,90,90,123,123,123
+Archbold Bio Station,1999,90,90,123,123,123
+Archbold Bio Station,2000,91,91,123,123,123
+Archbold Bio Station,2001,90,90,123,123,123
+Archbold Bio Station,2002,90,90,123,123,123
+Archbold Bio Station,2003,90,90,123,123,123
+Archbold Bio Station,2004,91,91,123,123,123
+Archbold Bio Station,2005,90,90,123,123,123
+Archbold Bio Station,2006,90,90,123,123,123
+Archbold Bio Station,2007,90,90,123,123,123
+Archbold Bio Station,2008,91,91,123,123,123
+Archbold Bio Station,2009,90,90,123,123,123
+Archbold Bio Station,2010,90,90,123,123,123
+Archbold Bio Station,2011,90,90,123,123,123
+Archbold Bio Station,2012,91,91,123,123,123
+Archbold Bio Station,2013,90,90,123,123,123
+Archbold Bio Station,2014,90,90,123,123,123
+Archbold Bio Station,2015,90,90,123,123,123
+Archbold Bio Station,2016,91,91,123,123,123
+Archbold Bio Station,2017,90,90,123,123,123
+Archbold Bio Station,2018,90,90,123,123,123
+Archbold Bio Station,2019,90,90,123,123,123
+Archbold Bio Station,2020,91,91,123,123,123
+Archbold Bio Station,2021,90,90,123,123,123
+Archbold Bio Station,2022,90,90,123,123,123
+Archbold Bio Station,2023,90,90,123,123,123
+Archbold Bio Station,2024,91,91,123,123,123
+Big Cypress,1990,0,90,0,0,0
+Big Cypress,1991,0,90,0,0,0
+Big Cypress,1992,0,91,0,0,0
+Big Cypress,1993,0,90,0,0,0
+Big Cypress,1994,0,90,0,0,0
+Big Cypress,1995,0,90,0,0,0
+Big Cypress,1996,0,91,0,0,0
+Big Cypress,1997,0,90,0,0,0
+Big Cypress,1998,0,90,0,0,0
+Big Cypress,1999,0,90,0,0,0
+Big Cypress,2000,0,91,0,0,0
+Big Cypress,2001,0,90,0,0,0
+Big Cypress,2002,0,90,89,89,91
+Big Cypress,2003,88,90,114,114,114
+Big Cypress,2004,91,91,123,123,123
+Big Cypress,2005,89,90,115,115,123
+Big Cypress,2006,89,90,123,123,123
+Big Cypress,2007,87,90,123,123,123
+Big Cypress,2008,91,91,115,115,119
+Big Cypress,2009,90,90,115,115,115
+Big Cypress,2010,90,90,123,123,123
+Big Cypress,2011,90,90,123,123,123
+Big Cypress,2012,91,91,123,123,123
+Big Cypress,2013,90,90,123,123,123
+Big Cypress,2014,90,90,123,123,121
+Big Cypress,2015,90,90,123,123,117
+Big Cypress,2016,91,91,123,123,114
+Big Cypress,2017,90,90,123,123,123
+Big Cypress,2018,90,90,123,123,121
+Big Cypress,2019,90,90,123,123,123
+Big Cypress,2020,91,91,123,123,123
+Big Cypress,2021,90,90,123,123,123
+Big Cypress,2022,90,90,123,123,123
+Big Cypress,2023,90,90,123,123,123
+Big Cypress,2024,91,91,123,123,123
+Clewiston,1990,90,90,123,123,123
+Clewiston,1991,90,90,123,123,123
+Clewiston,1992,91,91,123,123,123
+Clewiston,1993,90,90,123,123,123
+Clewiston,1994,90,90,123,123,123
+Clewiston,1995,90,90,86,86,86
+Clewiston,1996,60,91,81,81,76
+Clewiston,1997,59,90,84,84,113
+Clewiston,1998,59,90,71,84,106
+Clewiston,1999,60,90,62,79,96
+Clewiston,2000,32,91,16,16,18
+Clewiston,2001,38,90,67,67,88
+Clewiston,2002,47,90,57,57,79
+Clewiston,2003,41,90,43,43,47
+Clewiston,2004,0,91,0,0,0
+Clewiston,2005,0,90,0,0,0
+Clewiston,2006,0,90,0,0,0
+Clewiston,2007,0,90,0,0,0
+Clewiston,2008,0,91,0,0,0
+Clewiston,2009,0,90,0,0,0
+Clewiston,2010,0,90,0,0,0
+Clewiston,2011,0,90,0,0,0
+Clewiston,2012,0,91,0,0,0
+Clewiston,2013,0,90,0,0,0
+Clewiston,2014,0,90,0,0,0
+Clewiston,2015,0,90,0,0,0
+Clewiston,2016,0,91,0,0,0
+Clewiston,2017,0,90,0,0,0
+Clewiston,2018,0,90,0,0,0
+Clewiston,2019,0,90,0,0,0
+Clewiston,2020,0,91,0,0,0
+Clewiston,2021,0,90,0,0,0
+Clewiston,2022,0,90,0,0,0
+Clewiston,2023,0,90,0,0,0
+Clewiston,2024,0,91,0,0,0
+Clewiston No. 2,1990,0,90,0,0,0
+Clewiston No. 2,1991,0,90,0,0,0
+Clewiston No. 2,1992,0,91,0,0,0
+Clewiston No. 2,1993,0,90,0,0,0
+Clewiston No. 2,1994,0,90,0,0,0
+Clewiston No. 2,1995,0,90,0,0,0
+Clewiston No. 2,1996,0,91,0,0,0
+Clewiston No. 2,1997,0,90,0,0,0
+Clewiston No. 2,1998,0,90,0,0,0
+Clewiston No. 2,1999,0,90,0,0,0
+Clewiston No. 2,2000,0,91,0,0,0
+Clewiston No. 2,2001,0,90,0,0,0
+Clewiston No. 2,2002,0,90,0,0,0
+Clewiston No. 2,2003,90,90,88,88,93
+Clewiston No. 2,2004,91,91,121,121,119
+Clewiston No. 2,2005,90,90,123,123,123
+Clewiston No. 2,2006,89,90,123,123,123
+Clewiston No. 2,2007,88,90,122,122,123
+Clewiston No. 2,2008,91,91,123,123,123
+Clewiston No. 2,2009,90,90,120,123,123
+Clewiston No. 2,2010,90,90,123,123,123
+Clewiston No. 2,2011,90,90,123,123,123
+Clewiston No. 2,2012,91,91,123,123,123
+Clewiston No. 2,2013,90,90,123,123,123
+Clewiston No. 2,2014,90,90,123,123,123
+Clewiston No. 2,2015,90,90,123,123,123
+Clewiston No. 2,2016,91,91,123,123,123
+Clewiston No. 2,2017,0,90,0,0,0
+Clewiston No. 2,2018,0,90,0,0,0
+Clewiston No. 2,2019,0,90,0,0,0
+Clewiston No. 2,2020,0,91,0,0,0
+Clewiston No. 2,2021,0,90,0,0,0
+Clewiston No. 2,2022,0,90,0,0,0
+Clewiston No. 2,2023,0,90,0,0,0
+Clewiston No. 2,2024,0,91,0,0,0
+Devils Garden,1990,90,90,123,123,123
+Devils Garden,1991,90,90,121,121,121
+Devils Garden,1992,84,91,114,114,121
+Devils Garden,1993,87,90,117,117,121
+Devils Garden,1994,73,90,114,114,113
+Devils Garden,1995,88,90,123,123,123
+Devils Garden,1996,89,91,123,123,123
+Devils Garden,1997,90,90,89,89,115
+Devils Garden,1998,89,90,120,120,123
+Devils Garden,1999,87,90,92,92,92
+Devils Garden,2000,90,91,122,122,122
+Devils Garden,2001,80,90,109,109,123
+Devils Garden,2002,59,90,121,120,123
+Devils Garden,2003,90,90,117,117,116
+Devils Garden,2004,91,91,121,121,120
+Devils Garden,2005,89,90,123,123,123
+Devils Garden,2006,90,90,122,122,123
+Devils Garden,2007,89,90,123,123,123
+Devils Garden,2008,91,91,123,123,123
+Devils Garden,2009,90,90,123,123,123
+Devils Garden,2010,90,90,123,123,123
+Devils Garden,2011,90,90,123,123,123
+Devils Garden,2012,91,91,123,123,123
+Devils Garden,2013,90,90,123,123,123
+Devils Garden,2014,90,90,123,123,123
+Devils Garden,2015,90,90,123,123,123
+Devils Garden,2016,91,91,123,123,123
+Devils Garden,2017,90,90,123,123,123
+Devils Garden,2018,59,90,0,0,123
+Devils Garden,2019,0,90,0,0,123
+Devils Garden,2020,0,91,0,0,123
+Devils Garden,2021,0,90,0,0,123
+Devils Garden,2022,0,90,0,0,123
+Devils Garden,2023,0,90,0,0,123
+Devils Garden,2024,0,91,0,0,123
