@@ -59,6 +59,26 @@ def rmse(actual, predicted):
     return float(np.sqrt(mean_squared_error(actual, predicted)))
 
 
+def drop_incomplete_rows(df, verbose=True):
+    """Drop rows with a missing model input or target; say which years and why.
+
+    LightGBM cannot use a year whose weather features are NA (nothing is
+    imputed), and the first year has no lagged yield. The dropped years are
+    printed so rows never disappear silently.
+    """
+    cols = FEATURE_COLS + ['log_yield']
+    missing = df[cols].isna()
+    dropped = df[missing.any(axis=1)]
+    if verbose:
+        if dropped.empty:
+            print(f"Rows dropped for missing inputs: none (of {len(df)})")
+        else:
+            detail = "; ".join(f"{int(row.year)} ({', '.join(c for c in cols if missing.loc[i, c])})"
+                               for i, row in dropped.iterrows())
+            print(f"Rows dropped for missing inputs: {len(dropped)} of {len(df)} - {detail}")
+    return df.drop(index=dropped.index).copy()
+
+
 def fit_arima_baseline(df):
     """
     Fit ARIMA(1, 1, 1) on historical yield (univariate).
@@ -114,8 +134,7 @@ def fit_lightgbm_holdout(df):
     print("\n[*] LightGBM (holdout: train 1991-2022, test 2023-24)")
     print("-" * 60)
 
-    # Drop rows with NaN (first year has NaN lag)
-    df_clean = df.dropna(subset=FEATURE_COLS + ['log_yield']).copy()
+    df_clean = drop_incomplete_rows(df)
 
     train_df = df_clean[df_clean['year'] <= TRAIN_CUTOFF]
     test_df = df_clean[df_clean['year'].isin(TEST_YEARS)]
@@ -214,7 +233,7 @@ def rolling_origin_evaluation(df, first_test_year=FIRST_ROLLING_TEST_YEAR):
     print(f"\n[*] Rolling-origin evaluation ({first_test_year}-{int(df['year'].max())}, one step ahead)")
     print("-" * 60)
 
-    df_clean = df.dropna(subset=FEATURE_COLS + ['log_yield']).copy()
+    df_clean = drop_incomplete_rows(df, verbose=False)  # same rows as the holdout fit above
     by_year = df.set_index('year')['yield_lbs_acre']
     rows, arima_warnings = [], 0
 
