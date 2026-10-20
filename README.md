@@ -121,7 +121,7 @@ src/        fetch_data, feature_engineering, train_models, stress_indicator,
 tests/      feature-engineering tests
 data/       raw and engineered CSVs, station coverage matrix
 results/    model results, stress indicator, station sensitivity
-docs/       METHODOLOGY, SCHEMA, API_SOURCES, WALKTHROUGH, citations
+docs/       METHODOLOGY, SCHEMA, API_SOURCES, citations
 ```
 
 Deployed on [Render](https://render.com) from `main` (see [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md)); the app reads the committed files, so no API keys are needed at runtime.

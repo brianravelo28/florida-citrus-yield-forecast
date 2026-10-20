@@ -103,3 +103,6 @@ dist/
 # Local tooling
 .claude/
 .Rhistory
+
+# Personal study notes, kept locally only
+docs/WALKTHROUGH.md
