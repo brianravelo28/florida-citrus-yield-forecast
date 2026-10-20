@@ -12,7 +12,9 @@ On the free tier the service sleeps when idle, so the first request after a paus
 | Start command | `gunicorn src.app:server --bind 0.0.0.0:$PORT` |
 | Auto-deploy | On push to `main` |
 
-`src/app.py` exposes the Flask server as `server` for gunicorn. `render.yaml` in the repo root records these settings.
+`src/app.py` exposes the Flask server as `server` for gunicorn. `render.yaml` in the repo root records these settings as a reference.
+
+**Python version.** The live build log shows Python 3.14 (3.14.3 at last check), and `requirements.txt` is pinned to the package versions installed there (the same pins were tested in a clean local Python 3.14 environment). Set `PYTHON_VERSION` in the service's Environment settings in the Render dashboard if you want to fix the interpreter explicitly. `render.yaml` also lists it, but the live service did not follow an earlier value in that file.
 
 ## Data files must be committed
 

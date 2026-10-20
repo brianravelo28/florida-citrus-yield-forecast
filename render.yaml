@@ -1,9 +1,12 @@
+# Reference copy of the live service's settings. The running service may be
+# configured in the Render dashboard rather than from this file; the Python
+# version it actually uses is shown at the top of the build log.
 services:
   - type: web
     name: citrus-yield-forecast
-    runtime: python312
+    runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn src.app:server --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
-        value: "3.12"
+        value: "3.14.3"

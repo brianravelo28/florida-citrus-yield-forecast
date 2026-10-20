@@ -1,11 +1,11 @@
-pandas>=1.3
-numpy>=1.21
-lightgbm>=3.3
-statsmodels>=0.13
-plotly>=5.0
-dash>=2.0
-geopandas>=0.10
-shapely>=1.7
-requests>=2.26
-scikit-learn>=1.0
-gunicorn>=21.0
+# Pinned to the versions the live Render deployment runs on (Python 3.14).
+# These pins do not install on Python 3.9; use Python 3.11+ (3.14 matches Render).
+dash==4.4.1
+plotly==7.1.0
+pandas==3.0.6
+numpy==2.5.3
+scikit-learn==1.9.1
+lightgbm==4.7.0
+statsmodels==0.15.0
+requests==2.34.2
+gunicorn==26.2.0

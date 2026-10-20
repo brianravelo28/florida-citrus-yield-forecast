@@ -12,21 +12,36 @@ What the code does and why. Results live in the [README](../README.md) so they h
 
 1. **Yield:** `BOXES / ACRE` x 90 lb/box (`src/fetch_data.py`). The fetcher requires all 35 years to be present.
 2. **Weather:** daily TMAX/TMIN/PRCP per station. Readings outside plausible Florida bounds (TMAX 20-110 F, TMIN -5-85 F, PRCP 0-20 in) are dropped as sensor errors; this removed 12 of 281,395 county records and none of the statewide records. The fetcher requires every year to have some weather data.
-3. **Station averaging:** `feature_engineering.py` averages stations per day before aggregating. A frost at one station but not the others is therefore diluted in `frost_days_bloom`.
-4. **Missing precipitation:** a day with temperatures but no `PRCP` value is treated as 0 mm (`fillna(0)`). The statewide series has full May-Aug precipitation coverage in every year. The county panel does not: 19 of 140 county-years have fewer than 123 observed May-Aug precipitation days, and three are badly affected (Highlands 2022: 9 days; DeSoto 1993: 29; DeSoto 1990: 34). Treat precipitation features for those county-years as unreliable.
-5. **Rolling windows** are computed over available observation days, not calendar days, so station gaps stretch the window.
+3. **Station averaging:** `feature_engineering.py` averages stations per day before aggregating. A frost at one station but not the others is therefore diluted in `frost_days_bloom`. For 2011-2019 the individual stations averaged 1.78 (Sebring), 1.12 (Lakeland), 0.33 (Orlando) and 0.22 (Tampa) Jan-Mar frost days per year, against 0.44 for the averaged series.
+
+   **The set of stations also changes by year.** NOAA has no records for Lakeland Linder in 1996-2010 or Orlando Executive before 1998 (confirmed by querying the API directly), so the statewide weather comes from:
+
+   | Years | Stations reporting Jan-Mar TMIN |
+   |---|---|
+   | 1990-1995 | Lakeland, Tampa |
+   | 1996-1998 | Tampa only |
+   | 1999-2007 | Orlando, Tampa |
+   | 2008-2011 | Orlando, Sebring, Tampa |
+   | 2012-2024 | Lakeland, Orlando, Sebring, Tampa |
+
+   County series have the same issue: 41 of 140 county-years have only one station reporting Jan-Mar TMIN, and the average number of stations per county shifts between the 1990s and 2020s (Polk 1.7 to 4.0, Hendry 2.0 to 1.0, Highlands 1.0 to 1.6). Weather features, and frost counts in particular, are therefore approximate and not strictly comparable across years or counties. This is accepted for the project's scope; a station-consistent or gridded-weather study would be a separate analysis.
+
+   **Season labels.** NASS labels a Florida citrus season by its end year (the 2022-23 season, which includes Hurricane Ian, is `year = 2023`). The calendar-year weather windows are matched to that label without adjustment, so they are offset by roughly a year from the crop's actual bloom and growth. The effect on results was not measured.
+4. **Missing weather is missing, never zero.** A feature is calculated only when every calendar day of its window (Jan-Mar, or May-Aug) has an observation; a day counts as observed if at least one station reported that variable. Otherwise the feature is left blank (NA). This covers frost days, the temperature means and standard deviation, GDD, rainfall totals, and the rolling rain windows (which run over real calendar days). An earlier version filled missing rainfall with 0 mm and counted days with no record as "no frost", which understated frost counts and sums and stretched "30-day" windows across missing days. The statewide series has complete windows in every year, so none of its features are NA (re-running the corrected code reproduced the statewide features exactly). In the county panel 19 of 140 county-years are missing rainfall, 28 are missing TMAX/GDD, 26 TMIN, and 19 frost days; 36 are missing at least one of the frost, temperature, or GDD values the dashboard shows. The worst cases for rainfall are Highlands 2022 (9 of 123 May-Aug days observed), DeSoto 1993 (29), and DeSoto 1990 (34). `precip_deviation` uses the mean of the years that have complete rainfall.
 
 ## Features
 
-`frost_days_bloom` (Jan-Mar), growing-season (May-Aug) temperature mean/variance, growing degree days (base 50 F), precipitation total and rolling maxima, precipitation deviation from the 1990-2024 mean, lagged yield, and year. Definitions are in the README; exact columns in `docs/SCHEMA.md`.
+`frost_days_bloom` (Jan-Mar), growing-season (May-Aug) temperature mean and standard deviation (the column is named `temp_variance_grow` but holds a standard deviation), growing degree days (base 50 F), precipitation total and rolling maxima, precipitation deviation from the series mean (a constant shift of the total, redundant for the models and used by the stress score), lagged yield, and year. Definitions are in the README; exact columns in `docs/SCHEMA.md`.
 
 ## Models and evaluation
 
 - **ARIMA(1,1,1)** on yield alone, fit on 1990-2022. An ADF test on the training series gives p = 0.988 (non-stationary), consistent with differencing.
 - **LightGBM** regression on `log_yield` using 12 standardized inputs, trained on 1991-2022 (the first year is dropped for its missing lag): `learning_rate=0.05`, `num_leaves=31`, `max_depth=5`, `min_data_in_leaf=10`, 200 rounds. Predictions are back-transformed with `expm1`.
-- **Evaluation** is a single temporal holdout: train through 2022, test on 2023 and 2024. There is no rolling-origin cross-validation; with two test points, error estimates are very noisy.
-- **Feature importance** is LightGBM's split count (`feature_importance()` default), not SHAP or gain.
-- **Why LightGBM underperforms here:** tree ensembles predict averages of training targets and cannot go below the lowest values seen in training (11,250 lb/acre, in 2018), while 2023-24 actuals were 5,130 and 7,020.
+- **Naive baseline:** "yield stays at last year's value". Reported two ways on the 2023-24 holdout (one step: previous year's actual yield; multi step: 2022 repeated for both years) so it can be compared with each model on the same information.
+- **Evaluation 1, holdout:** train through 2022, test on 2023 and 2024. Two test points, and the methods do not all get the same information (ARIMA forecasts both years from 2022; LightGBM uses each year's actual lag), so error estimates are very noisy and not like-for-like.
+- **Evaluation 2, rolling origin** (`rolling_origin_evaluation` in `src/train_models.py`): for each test year from 2008 to 2024, fit every method on earlier years only and predict that one year, using the previous year's actual yield. 17 folds, equal information for all methods. LightGBM folds train on 17-32 rows. ARIMA is refit each fold (one fold failed to converge cleanly, and ARIMA's rolling numbers differ by about 1 lb/acre between statsmodels versions). Results are in the README and per fold in `results/rolling_origin_folds.csv`.
+- **Feature importance** is LightGBM's split count (`feature_importance()` default) on the holdout model, not SHAP or gain.
+- **Why LightGBM underperforms:** tree ensembles predict averages of training targets and cannot go below the lowest values seen in training (11,250 lb/acre, in 2018), while 2023-24 actuals were 5,130 and 7,020. The rolling folds show the same pattern across time: LightGBM over-predicted in every year from 2010 on, lagging a falling series. Loosening `min_data_in_leaf` did not fix it in a one-off re-fit, so it is not simply a small-leaf constraint. Neither model beats the naive baseline in this data.
 
 ## Climate stress indicator
 
@@ -46,4 +61,10 @@ Illustrative, not estimated from data: the slider scales the 1990-2024 average f
 
 ## Reproducibility
 
-`python src/fetch_data.py` regenerates `nass_yield.csv` and `noaa_weather.csv` from the live APIs; a fresh run reproduced the committed files exactly. Failed requests stop the run and write nothing.
+API keys are read from the `NASS_KEY` and `NOAA_TOKEN` environment variables. Both fetchers retry transient failures, then stop and write nothing if any request fails, any Census acreage query returns other than exactly one row, or any year of weather is missing; there is no substitute-data fallback.
+
+Verified:
+- **Statewide fetch** (`python src/fetch_data.py`) reproduced the committed `nass_yield.csv` and `noaa_weather.csv` exactly.
+- **County fetch** (`python src/fetch_county_data.py`, run end to end on Python 3.14) reproduced the committed `county_acreage.csv` exactly and `county_weather.csv` apart from 81 additional Lakeland Linder records (27 days of February 2018) that NOAA published after the 2026-09-16 snapshot; no existing value changed, and no feature is affected. The committed files are the 2026-09-16 snapshot.
+- **Features and models** (`feature_engineering.py`, `train_models.py`) reproduce the committed `df_model.csv` and the holdout results in `model_results.json` exactly on Python 3.9 / pandas 2.0 and on Python 3.14 / pandas 3.0 (the stack the live site runs). The rolling-origin ARIMA RMSE differs by about 1 lb/acre between the two (statsmodels 0.14.6 vs 0.15.0).
+- `requirements.txt` is pinned to the live deployment's versions and was installed and run in a clean Python 3.14 environment.

@@ -7,6 +7,7 @@ There is deliberately no fallback to substitute data: a failed fetch must
 never produce files that look like real data.
 """
 
+import os
 import sys
 import time
 from pathlib import Path
@@ -14,19 +15,19 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-# API credentials - replace with your own free keys (see README).
-NASS_KEY = "C239BF21-79EB-3B84-B273-9CE323601358"
-NOAA_TOKEN = "ytMyljSmGhKmcJeNITGlrpqFZBHopvJP"
 
 START_YEAR, END_YEAR = 1990, 2024
 
 # Ensure data directory exists
 Path("data").mkdir(exist_ok=True)
 
-# Physically-motivated sanity bounds for central FL daily readings
-# (units=standard: TMAX/TMIN in deg F, PRCP in inches). See
-# src/fetch_county_data.py for full rationale - kept in sync here so any
-# re-fetch of state-level weather gets the same protection.
+# Physically-motivated sanity bounds for central/south FL daily readings
+# (units=standard: TMAX/TMIN in deg F, PRCP in inches), shared with
+# src/fetch_county_data.py. Florida's all-time record high is 109F (1931).
+# The bounds are deliberately generous so real extremes (freezes,
+# hurricanes) pass through; they only catch single-point sensor or
+# transcription errors seen in the co-op station data (e.g. a 0F or 115F
+# daily high, or a 101F daily low).
 TMAX_BOUNDS = (20.0, 110.0)
 TMIN_BOUNDS = (-5.0, 85.0)
 PRCP_BOUNDS = (0.0, 20.0)
@@ -36,6 +37,19 @@ FL_ORANGE_BOX_LBS = 90  # Standard FDOC/USDA Florida orange box weight (lbs)
 
 class FetchError(RuntimeError):
     """A data fetch failed. Nothing should be written when this is raised."""
+
+
+def require_key(name):
+    """Read an API credential from the environment; fail clearly if it is unset.
+
+    Keys are free (see README). They are read at fetch time, not import time,
+    so importing helpers from this module never requires credentials, and
+    the error never echoes a value.
+    """
+    value = os.environ.get(name, "").strip()
+    if not value:
+        raise FetchError(f"{name} is not set. Get a free key (see README) and export it as an environment variable.")
+    return value
 
 
 def is_plausible(datatype, value):
@@ -81,7 +95,7 @@ def fetch_nass_yield():
     print("Fetching USDA NASS Florida orange yield data...")
 
     params = {
-        "key": NASS_KEY,
+        "key": require_key("NASS_KEY"),
         "commodity_desc": "ORANGES",
         "state_alpha": "FL",
         "agg_level_desc": "STATE",
@@ -133,10 +147,11 @@ def fetch_noaa_weather():
 
     # GHCND airport station IDs, verified to return TMAX/TMIN/PRCP.
     # Lakeland Linder is physically inside Polk County; Tampa and Orlando
-    # are the nearest major hubs (all three cover 1990-2024 continuously).
-    # Sebring only has data from 2007-12-09 onward, but is included anyway
-    # since it strengthens the multi-station average for 2008+ years
-    # without affecting earlier years (pivot averaging just skips it).
+    # are the nearest major hubs. Coverage is NOT continuous: NOAA has no
+    # records for Lakeland in 1996-2010 or for Orlando before 1998, and
+    # Sebring starts 2007-12-09. The per-day average therefore uses a
+    # different set of stations in different years (see
+    # docs/METHODOLOGY.md); pivot averaging just skips missing stations.
     # (Bartow, also in Polk County, only reports PRCP - no temperature
     # data - so it's excluded entirely.)
     stations = {
@@ -147,7 +162,7 @@ def fetch_noaa_weather():
     }
 
     url = "https://www.ncei.noaa.gov/cdo-web/api/v2/data"
-    headers = {"token": NOAA_TOKEN}
+    headers = {"token": require_key("NOAA_TOKEN")}
 
     all_weather = []
 

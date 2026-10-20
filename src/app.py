@@ -17,6 +17,15 @@ stress_data = pd.read_csv("results/stress_indicator.csv")
 county_features = pd.read_csv("data/county_features.csv")
 COUNTY_LIST = sorted(county_features["county_name"].unique().tolist())
 COUNTY_YEARS = sorted(county_features["year"].unique().tolist())
+
+# Metrics shown in the Yearly Outlook panel. Years where a county's weather was
+# incomplete are NA ("missing"), not zero. The panel opens on the latest year in
+# which every county has all three metrics, so it doesn't start mostly "missing".
+OUTLOOK_METRICS = ["frost_days_bloom", "tmax_mean_grow", "gdd_total_grow"]
+_n_complete = county_features.groupby("year").apply(
+    lambda g: int(g[OUTLOOK_METRICS].notna().all(axis=1).sum()))
+_complete_years = _n_complete[_n_complete == county_features["county_name"].nunique()]
+DEFAULT_OUTLOOK_YEAR = int(_complete_years.index.max()) if len(_complete_years) else COUNTY_YEARS[-1]
 COUNTY_COLORS = {
     "Polk": "#0d6efd",
     "Hendry": "#198754",
@@ -250,7 +259,12 @@ app.layout = html.Div([
                 html.Div([
                     html.H3("Frost Days During Bloom (Jan-Mar), by County", style={'marginBottom': '20px'}),
                     dcc.Graph(id='county-frost-chart'),
-                    chart_hint()
+                    chart_hint(),
+                    html.P(
+                        html.I("Breaks in a line are years when a county's stations were missing some "
+                               "January-March temperature days: shown as missing, not as zero."),
+                        style={'fontSize': '12px', 'color': '#888', 'marginTop': '10px'}
+                    )
                 ], style={'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}),
 
                 html.Div([
@@ -270,11 +284,14 @@ app.layout = html.Div([
                         dcc.Dropdown(
                             id='county-year-dropdown',
                             options=[{'label': str(y), 'value': y} for y in COUNTY_YEARS],
-                            value=COUNTY_YEARS[-1],
+                            value=DEFAULT_OUTLOOK_YEAR,
                             clearable=False,
                             searchable=False,
                             style={'width': '150px', 'display': 'inline-block', 'verticalAlign': 'middle'}
-                        )
+                        ),
+                        html.I(f"Opens on {DEFAULT_OUTLOOK_YEAR}, the latest year with complete data for every "
+                               "county; incomplete values show as missing.",
+                               style={'fontSize': '12px', 'color': '#888', 'marginLeft': '15px'})
                     ], style={'marginBottom': '20px', 'display': 'flex', 'alignItems': 'center'}),
                     dcc.Graph(id='county-latest-comparison'),
                     chart_hint(legend=False)
@@ -635,42 +652,47 @@ def update_county_latest(selected_counties, selected_year):
     tmax_vals = [sub[sub['county_name'] == c]['tmax_mean_grow'].values[0] for c in counties_ordered]
     gdd_vals = [sub[sub['county_name'] == c]['gdd_total_grow'].values[0] for c in counties_ordered]
 
-    # Explicit value labels on every bar so a real "0" reads as data,
-    # not as an empty/broken chart (some years genuinely have 0 frost
-    # days across all counties, e.g. 2024).
-    fig.add_trace(go.Bar(
-        x=counties_ordered, y=frost_vals,
-        text=[f"{v:.0f}" for v in frost_vals], textposition='outside',
-        marker=dict(color=colors), showlegend=False
-    ), row=1, col=1)
+    # A value is NA when the county's stations were missing some days in the
+    # window. That is "missing", not zero: it gets no bar and an italic label.
+    # A real zero keeps its bar and a "0" label so it can't be mistaken for it.
+    def bar_data(values, fmt):
+        y = [0 if pd.isna(v) else v for v in values]
+        text = ["<i>missing</i>" if pd.isna(v) else format(v, fmt) for v in values]
+        return y, text
 
-    fig.add_trace(go.Bar(
-        x=counties_ordered, y=tmax_vals,
-        text=[f"{v:.1f}" for v in tmax_vals], textposition='outside',
-        marker=dict(color=colors), showlegend=False
-    ), row=1, col=2)
+    def axis_top(values, factor, floor):
+        # Explicit headroom above the tallest bar so the "outside" label has
+        # room (Plotly's autorange leaves ~5%, which clipped labels), and a
+        # floor so an all-zero or all-missing panel still gets a readable axis.
+        present = [v for v in values if not pd.isna(v)]
+        return max(floor, max(present) * factor) if present else floor
 
-    fig.add_trace(go.Bar(
-        x=counties_ordered, y=gdd_vals,
-        text=[f"{v:.0f}" for v in gdd_vals], textposition='outside',
-        marker=dict(color=colors), showlegend=False
-    ), row=1, col=3)
+    for col, values, fmt in ((1, frost_vals, ".0f"), (2, tmax_vals, ".1f"), (3, gdd_vals, ".0f")):
+        y, text = bar_data(values, fmt)
+        fig.add_trace(go.Bar(
+            x=counties_ordered, y=y, text=text, textposition='outside',
+            marker=dict(color=colors), showlegend=False
+        ), row=1, col=col)
 
-    # Explicit headroom above the tallest bar on every panel, so the
-    # "outside" value label has room to render instead of clipping
-    # against the subplot boundary. Plotly's autorange only leaves ~5%
-    # padding above the max value, which isn't enough for outside text
-    # (confirmed: e.g. GDD max 4312 -> autorange top 4539, label cut off).
-    # Frost days panel also needs a floor for all-zero years (Plotly
-    # auto-ranges to [-1, 1] when every value is 0, hiding the axis).
-    fig.update_yaxes(range=[0, max(2, max(frost_vals) * 1.3)], row=1, col=1)
-    fig.update_yaxes(range=[0, max(tmax_vals) * 1.15], row=1, col=2)
-    fig.update_yaxes(range=[0, max(gdd_vals) * 1.15], row=1, col=3)
+    fig.update_yaxes(range=[0, axis_top(frost_vals, 1.3, 2)], row=1, col=1)
+    fig.update_yaxes(range=[0, axis_top(tmax_vals, 1.15, 1)], row=1, col=2)
+    fig.update_yaxes(range=[0, axis_top(gdd_vals, 1.15, 1)], row=1, col=3)
+
+    frost_present = [v for v in frost_vals if not pd.isna(v)]
+    n_missing = len(frost_vals) - len(frost_present)
+    if not frost_present:
+        frost_note = " — frost data missing for every selected county"
+    elif max(frost_present) == 0 and n_missing == 0:
+        frost_note = " — no frost recorded in any selected county"
+    elif max(frost_present) == 0:
+        n_with = len(frost_present)
+        frost_note = (f" — no frost in the {n_with} {'county' if n_with == 1 else 'counties'} "
+                      f"with data ({n_missing} missing)")
+    else:
+        frost_note = ""
 
     fig.update_layout(
-        title=f"{selected_year} Snapshot" + (
-            " — no frost recorded in any selected county" if max(frost_vals) == 0 else ""
-        ),
+        title=f"{selected_year} Snapshot" + frost_note,
         height=450,
         template='plotly_white'
     )

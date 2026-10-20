@@ -1,6 +1,6 @@
 # API Sources and Notes
 
-How this project queries USDA NASS and NOAA, plus the non-obvious behaviors that cost time to discover. API keys are free; set them as the `NASS_KEY` / `NOAA_TOKEN` constants at the top of `src/fetch_data.py` and `src/fetch_county_data.py`.
+How this project queries USDA NASS and NOAA, plus the non-obvious behaviors that cost time to discover. API keys are free; export them as the `NASS_KEY` and `NOAA_TOKEN` environment variables. Both fetch scripts read them at run time and stop with a clear message if they are unset; no key is stored in the code.
 
 ## USDA NASS QuickStats
 
@@ -51,11 +51,12 @@ Things to know:
 - **The station catalog is not evidence of data.** In our tests `/datatypes` ignored the `datatypeid` filter and returned a truncated list, and registered date ranges did not guarantee observations exist. Bartow Municipal (`USW00012809`) is registered from 1955 but returned no observations in any year tested (1990-2024). Confirm a station by requesting actual observations across several years inside its registered range.
 - **IDs are easy to mix up:** `USW00012834` is Daytona Beach International, not Lakeland.
 - **Co-op (`USC`) stations contain isolated sensor errors** (e.g. a 115 F daily high, 101 F daily lows). Both fetchers apply the plausibility filter described in `docs/METHODOLOGY.md`.
-- **Requests fail loudly.** `fetch_data.py` retries three times, then stops and writes nothing; it has no substitute-data fallback.
+- **Requests fail loudly.** Both `fetch_data.py` and `fetch_county_data.py` share one client (`get_json`) that retries three times, then stops and writes nothing; neither has a substitute-data fallback. A year with no observations at a station is legitimate (stations start and stop) and is not an error.
+- **Published data can change.** NOAA backfilled 27 missing days of February 2018 at Lakeland Linder between two fetches a month apart, with no existing values altered. Treat a fetch as a snapshot of that date.
 
 ## Stations used
 
-Catalog date ranges shown for reference; actual coverage has gaps (see `docs/METHODOLOGY.md`).
+Catalog date ranges are shown for reference only and are not actual coverage. For example, NOAA has no records for Lakeland Linder in 1996-2010 or Orlando Executive before 1998 (see the station timeline in `docs/METHODOLOGY.md`).
 
 | Station | ID | Used for | Catalog range |
 |---|---|---|---|

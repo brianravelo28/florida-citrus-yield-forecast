@@ -1,13 +1,26 @@
 """
 Feature engineering: merge yield and weather data, calculate 13 features.
+
+Missing weather is missing, never zero. Each feature covers a fixed window
+(Jan-Mar bloom, May-Aug growing season) and is calculated only when every
+calendar day of that window has an observation; otherwise it is left blank
+(NA). A day counts as observed if at least one station reported the needed
+variable that day (stations are averaged per day). Partial windows would
+silently undercount frost days and sum totals (GDD, rainfall) and stretch
+rolling windows across missing days.
 """
 
-import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+import pandas as pd
 from pathlib import Path
 
 Path("data").mkdir(exist_ok=True)
+
+STATEWIDE_LABEL = "Florida (Statewide)"
+ROLLING_WINDOWS = (30, 60, 90)
+MM_PER_INCH = 25.4
+FROST_F = 32      # standard citrus freeze threshold
+GDD_BASE_F = 50   # growing degree day base temperature
 
 
 def load_data():
@@ -17,75 +30,57 @@ def load_data():
     return df_yield, df_weather
 
 
-def engineer_weather_features(df_weather):
+def engineer_weather_features(df_weather, label=STATEWIDE_LABEL):
     """
-    Aggregate weather data by county-year.
-    Calculate: tmax_mean, tmin_mean, frost_days, precip_total, rolling windows, gdd, temp_variance.
+    One row per year of weather features for one area (statewide or a county).
+
+    Input is long-format daily station data (date, datatype, value) in the
+    units NOAA returns with units=standard: TMAX/TMIN in F, PRCP in inches.
+    Features with an incomplete window are NaN (frost_days_bloom is
+    nullable-integer <NA>).
     """
-    df_weather['date'] = pd.to_datetime(df_weather['date'])
-    df_weather['year'] = df_weather['date'].dt.year
-    df_weather['month'] = df_weather['date'].dt.month
+    w = df_weather.copy()
+    w["date"] = pd.to_datetime(w["date"])
 
-    # Pivot weather data (TMAX, TMIN, PRCP as columns)
-    weather_pivot = df_weather.pivot_table(
-        index=['year', 'date'],
-        columns='datatype',
-        values='value',
-        aggfunc='mean'
-    ).reset_index()
+    # One row per date, stations averaged. A variable stays NaN on dates
+    # when no station reported it (it is not filled with 0).
+    daily = w.pivot_table(index="date", columns="datatype", values="value", aggfunc="mean")
+    daily = daily.reindex(columns=["TMAX", "TMIN", "PRCP"])
+    daily["PRCP"] = daily["PRCP"] * MM_PER_INCH  # inches to mm
 
-    weather_pivot.columns.name = None
-    weather_pivot['month'] = weather_pivot['date'].dt.month
+    def complete(series):
+        return bool(series.notna().all())
 
-    # NOAA CDO v2 API with units=standard returns TMAX/TMIN already in
-    # degrees F and PRCP already in inches - no tenths decoding needed.
-    weather_pivot['TMAX_F'] = weather_pivot.get('TMAX', pd.Series(dtype=float))
-    weather_pivot['TMIN_F'] = weather_pivot.get('TMIN', pd.Series(dtype=float))
-    weather_pivot['PRCP'] = weather_pivot.get('PRCP', pd.Series(dtype=float)).fillna(0) * 25.4  # inches to mm
+    rows = []
+    for year in sorted(daily.index.year.unique()):
+        # Reindex to the full calendar window so missing days are explicit NaN.
+        bloom = daily.reindex(pd.date_range(f"{year}-01-01", f"{year}-03-31"))
+        grow = daily.reindex(pd.date_range(f"{year}-05-01", f"{year}-08-31"))
 
-    features_by_year = []
+        tmax_ok, tmin_ok = complete(grow["TMAX"]), complete(grow["TMIN"])
+        prcp_ok, bloom_ok = complete(grow["PRCP"]), complete(bloom["TMIN"])
+        nan = np.nan
 
-    for year in weather_pivot['year'].unique():
-        year_data = weather_pivot[weather_pivot['year'] == year].copy()
+        row = {
+            "county_name": label,
+            "year": int(year),
+            "tmax_mean_grow": grow["TMAX"].mean() if tmax_ok else nan,
+            "tmin_mean_grow": grow["TMIN"].mean() if tmin_ok else nan,
+            "frost_days_bloom": int((bloom["TMIN"] <= FROST_F).sum()) if bloom_ok else pd.NA,
+            "precip_total_grow": grow["PRCP"].sum() if prcp_ok else nan,
+        }
+        # Largest rolling sum over real calendar days (window must be complete).
+        for window in ROLLING_WINDOWS:
+            row[f"precip_rolling_{window}"] = grow["PRCP"].rolling(window).sum().max() if prcp_ok else nan
+        row["temp_variance_grow"] = grow["TMAX"].std() if tmax_ok else nan  # std of daily TMAX
+        row["gdd_total_grow"] = (
+            ((grow["TMAX"] + grow["TMIN"]) / 2 - GDD_BASE_F).clip(lower=0).sum() if tmax_ok and tmin_ok else nan
+        )
+        rows.append(row)
 
-        # Bloom season (Jan-Mar): frost days
-        bloom = year_data[(year_data['month'] >= 1) & (year_data['month'] <= 3)]
-        frost_days = len(bloom[bloom['TMIN_F'] <= 32])  # standard citrus freeze threshold
-
-        # Growing season (May-Aug)
-        grow = year_data[(year_data['month'] >= 5) & (year_data['month'] <= 8)]
-
-        if len(grow) == 0:
-            continue
-
-        tmax_mean = grow['TMAX_F'].mean()
-        tmin_mean = grow['TMIN_F'].mean()
-        precip_total = grow['PRCP'].sum()
-        temp_variance = grow['TMAX_F'].std()
-
-        # GDD calculation (base 50F)
-        gdd = ((grow['TMAX_F'] + grow['TMIN_F']) / 2 - 50).clip(lower=0).sum()
-
-        # Rolling windows for precipitation
-        precip_rolling_30 = grow['PRCP'].rolling(window=30).sum().max()
-        precip_rolling_60 = grow['PRCP'].rolling(window=60).sum().max()
-        precip_rolling_90 = grow['PRCP'].rolling(window=90).sum().max()
-
-        features_by_year.append({
-            'year': int(year),
-            'county_name': 'Florida (Statewide)',
-            'tmax_mean_grow': tmax_mean,
-            'tmin_mean_grow': tmin_mean,
-            'frost_days_bloom': frost_days,
-            'precip_total_grow': precip_total,
-            'precip_rolling_30': precip_rolling_30,
-            'precip_rolling_60': precip_rolling_60,
-            'precip_rolling_90': precip_rolling_90,
-            'temp_variance_grow': temp_variance if not pd.isna(temp_variance) else 0,
-            'gdd_total_grow': gdd
-        })
-
-    return pd.DataFrame(features_by_year)
+    features = pd.DataFrame(rows)
+    features["frost_days_bloom"] = features["frost_days_bloom"].astype("Int64")
+    return features
 
 
 def merge_and_finalize(df_yield, df_weather_features):
@@ -100,9 +95,9 @@ def merge_and_finalize(df_yield, df_weather_features):
     # Lag-1 yield for carryover effect
     df_model['yield_lag1'] = df_model['yield_lbs_acre'].shift(1)
 
-    # Precip deviation from 30-year mean
-    precip_mean_30yr = df_model['precip_total_grow'].mean()
-    df_model['precip_deviation'] = df_model['precip_total_grow'] - precip_mean_30yr
+    # Precip deviation from the mean over the whole series (years with missing rain are skipped)
+    precip_mean = df_model['precip_total_grow'].mean()
+    df_model['precip_deviation'] = df_model['precip_total_grow'] - precip_mean
 
     # Year numeric (for trend)
     df_model['year_numeric'] = df_model['year']
