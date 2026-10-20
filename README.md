@@ -40,7 +40,7 @@ python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\act
 pip install -r requirements.txt
 ```
 
-Requires Python 3.12 or newer (the pinned numpy needs it); `requirements.txt` is pinned to the versions the live site runs on and the tests run on (Python 3.14). The cleaned data and results are committed, so the dashboard runs right away:
+Requires Python 3.12 or newer (the pinned numpy needs it); `requirements.txt` is pinned to the versions the live site runs on (Python 3.14); CI tests Python 3.13 and 3.14. The cleaned data and results are committed, so the dashboard runs right away:
 
 ```bash
 python run_dashboard.py          # http://127.0.0.1:8050  (run from the repo root)
