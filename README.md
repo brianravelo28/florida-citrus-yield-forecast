@@ -21,11 +21,11 @@ A pipeline and interactive dashboard that pulls public data on Florida orange yi
 | Dataset | Source | Details |
 |---|---|---|
 | Statewide orange yield | USDA NASS QuickStats | 1990-2024, converted to lb/acre at 90 lb per box |
-| Statewide weather | NOAA daily records (GHCND) | Daily highs, lows and rainfall from two fixed stations, Tampa International and the Archbold Biological Station |
+| Statewide weather | NOAA daily records (GHCND, the Global Historical Climatology Network daily dataset) | Daily highs, lows and rainfall from two fixed stations, Tampa International and the Archbold Biological Station |
 | County acreage | USDA Census of Agriculture | Bearing orange acres, 2002-2022 (every five years), four counties |
 | County weather | NOAA daily records | One station per county: Polk (Lakeland 2), Hendry (Moore Haven Lock 1, in neighboring Glades County), DeSoto (Arcadia), Highlands (Archbold) |
 
-Weather is a **proxy**: two stations stand in for the whole state, and neither is in the main Polk grove area. How the stations were chosen, and how sensitive the results are to that choice, is in [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
+All data are real observations from the USDA and NOAA sources above; none is synthetic. Weather is a **proxy**: two stations stand in for the whole state, and neither is in the main Polk grove area. How the stations were chosen, and how sensitive the results are to that choice, is in [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 
 ## Missing and withheld data
 
@@ -40,7 +40,7 @@ python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\act
 pip install -r requirements.txt
 ```
 
-Requires Python 3.11 or newer; `requirements.txt` is pinned to the versions the live site runs on (Python 3.14). The cleaned data and results are committed, so the dashboard runs right away:
+Requires Python 3.12 or newer (the pinned numpy needs it); `requirements.txt` is pinned to the versions the live site runs on and the tests run on (Python 3.14). The cleaned data and results are committed, so the dashboard runs right away:
 
 ```bash
 python run_dashboard.py          # http://127.0.0.1:8050  (run from the repo root)
@@ -121,7 +121,7 @@ src/        fetch_data, feature_engineering, train_models, stress_indicator,
 tests/      feature-engineering tests
 data/       raw and engineered CSVs, station coverage matrix
 results/    model results, stress indicator, station sensitivity
-docs/       METHODOLOGY, SCHEMA, API_SOURCES, citations
+docs/       METHODOLOGY, SCHEMA, API_SOURCES, WALKTHROUGH, citations
 ```
 
 Deployed on [Render](https://render.com) from `main` (see [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md)); the app reads the committed files, so no API keys are needed at runtime.

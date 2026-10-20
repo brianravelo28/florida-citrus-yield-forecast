@@ -2,6 +2,8 @@
 
 What the code does and why. Headline results live in the [README](../README.md); the numbers here are the supporting detail.
 
+Terms: **NASS** (USDA National Agricultural Statistics Service); **NOAA** (National Oceanic and Atmospheric Administration); **GHCND** (Global Historical Climatology Network daily, NOAA's station dataset); **TMAX / TMIN / PRCP** (daily maximum and minimum temperature, and precipitation); **GDD** (growing degree days: heat accumulated above 50 F); **ARIMA** (autoregressive integrated moving average, a time-series model) and **ADF** (augmented Dickey-Fuller, a test for non-stationarity); **RMSE / MAE** (root mean squared and mean absolute error); **HLB** (huanglongbing, citrus greening disease).
+
 ## Scope
 
 - **Target:** Florida statewide orange yield (lb/acre), 1990-2024, annual. NASS publishes citrus yield and production only at state level, so county yield cannot be modelled (see [API_SOURCES.md](API_SOURCES.md)).
@@ -19,7 +21,7 @@ What the code does and why. Headline results live in the [README](../README.md);
 
 ### Why two fixed stations
 
-An earlier version averaged four stations (Lakeland Linder, Tampa, Orlando Executive, Sebring) per day, using whichever reported. NOAA's records for those stations start and stop, so the set behind the series changed by year: Lakeland and Tampa in 1990-95, **Tampa alone in 1996-98**, Orlando and Tampa in 1999-2007, Sebring added in 2008, Lakeland back in 2012. That makes trends partly an artifact of which stations reported. Sebring is a colder station, so adding it in 2008 raised the apparent frost level. Averaging stations before counting frost also dilutes real frosts: a freeze at one station but not the others is smoothed away.
+Averaging whichever stations report each day lets the series change meaning as stations start and stop. With four stations (Lakeland Linder, Tampa, Orlando Executive, Sebring) the set behind the average changes by year: Lakeland and Tampa in 1990-95, **Tampa alone in 1996-98**, Orlando and Tampa in 1999-2007, Sebring added in 2008, Lakeland back in 2012. That makes trends partly an artifact of which stations reported. Sebring is a colder station, so adding it in 2008 raised the apparent frost level. Averaging stations before counting frost also dilutes real frosts: a freeze at one station but not the others is smoothed away.
 
 To fix the station set, `src/station_coverage.py` requested actual observations (the NOAA catalog's date ranges are not evidence of data) for 20 candidate stations in Polk, Highlands, Hendry and DeSoto counties and the stations already in use, for every year of 1990-2024. The full per-station-year counts are in `data/station_coverage_matrix.csv` (raw counts by month in `data/station_coverage.csv`). Years with a complete window, out of 35 (bloom window: every night of Jan-Mar TMIN observed; growing window: at least 95% of May-Aug days observed for TMAX, TMIN and PRCP):
 
@@ -49,7 +51,7 @@ Rebuilt with `src/station_sensitivity.py` from the committed weather (same featu
 
 | Station set | Mean frost days, 1990-2007 | Mean frost days, 2008-2024 | Min-temperature trend (growing season, F/decade) | HIGH stress years |
 |---|---|---|---|---|
-| Earlier version: 4 stations, whichever reported | 0.61 | 0.94 | 0.21 | 1996, 1997, 1999, 2001, 2009, 2010, 2015, 2018 |
+| Four stations, whichever reported (`65e8eee`) | 0.61 | 0.94 | 0.21 | 1996, 1997, 1999, 2001, 2009, 2010, 2015, 2018 |
 | **Tampa + Archbold (used)** | **1.94** | **1.82** | **0.96** | 1996, 2001, 2002, 2007, 2010, 2012 |
 | Tampa only | 0.56 | 0.53 | 1.10 | 1996, 2001, 2010 |
 | Archbold only | 6.17 | 6.59 | 0.82 | 1996, 2000, 2001, 2002, 2010, 2013, 2018 |
@@ -59,9 +61,11 @@ Rebuilt with `src/station_sensitivity.py` from the committed weather (same featu
 - **The stress-indicator ranking is station-dependent.** Only 1996, 2001 and 2010 are HIGH in all three fixed-station versions; the other years change with the stations. The stress score is an unvalidated heuristic and should be read that way.
 - Model errors for the other station sets were not computed; the table covers the features and the stress score. For the pair used, errors are in the README.
 
-### Change from the earlier version
+### Comparison with the four-station series
 
-| | Earlier (4 stations mixed) | Now (Tampa + Archbold) |
+The left column below is the committed result at commit `65e8eee`, the last commit before the station change; it is a fixed record, and no file in the current tree reproduces it.
+
+| | Four stations mixed (`65e8eee`) | Tampa + Archbold (current) |
 |---|---|---|
 | ARIMA holdout RMSE (2023-24) | 5,860 | 5,860 (yield only, unchanged) |
 | LightGBM holdout RMSE | 10,457 | 10,521 |
@@ -72,7 +76,7 @@ The model conclusion is unchanged: neither model beats repeating last year's yie
 
 ## Missing weather
 
-**Missing weather is missing, never zero.** An earlier version filled missing rainfall with 0 mm and counted days with no record as "no frost", which understated frost counts and sums and stretched "30-day" windows across missing days. The rules now are:
+**Missing weather is missing, never zero.** Filling missing rainfall with 0 mm, or counting days with no record as "no frost", would understate frost counts and sums and stretch "30-day" windows across missing days. The rules are:
 
 - **Fixed station set.** A day counts as observed only if every station in the input reported the variable that day; otherwise it is missing. Nothing is filled from other stations.
 - **Frost days (Jan-Mar):** every night of the window must be observed, because a missing night may have been a frost. Otherwise `frost_days_bloom` is blank.
@@ -89,7 +93,7 @@ Every feature is calculated from the fixed-station daily series above; temperatu
 |---|---|
 | `frost_days_bloom` | Days with TMIN <= 32 F, Jan-Mar |
 | `tmax_mean_grow`, `tmin_mean_grow` | Mean daily max / min temperature, May-Aug |
-| `temp_variance_grow` | **Standard deviation** (not variance) of daily max temperature, May-Aug. The name comes from the original project brief and is kept so file and column names stay stable |
+| `temp_variance_grow` | **Standard deviation** (not variance) of daily max temperature, May-Aug. The name is kept so file and column names stay stable |
 | `gdd_total_grow` | Growing degree days, base 50 F: the sum of max(0, (TMAX + TMIN)/2 - 50), May-Aug |
 | `precip_total_grow` | Total precipitation, May-Aug |
 | `precip_rolling_30/60/90` | Largest 30/60/90-calendar-day rolling precipitation sum within May-Aug |
@@ -135,7 +139,7 @@ stress = 0.4 * min(frost_days / p75_frost_days, 2)
 | County | Station | NOAA county (metadata) | Notes |
 |---|---|---|---|
 | Polk | Lakeland 2 | Polk | Starts late 1995, so 1990-94 are blank; 2010 and 2014 frost blank |
-| Hendry | Moore Haven Lock 1 | **Glades** | Hendry's own stations are blank in 20+ of 35 years (Devils Garden: 21; Big Cypress: 20), so the nearest usable station is used, in neighboring Glades County about 20 km from Devils Garden. It is labeled this way on the dashboard. The original project labeled it as a Hendry station; NOAA's metadata puts it in Glades |
+| Hendry | Moore Haven Lock 1 | **Glades** | Hendry's own stations are blank in 20+ of 35 years (Devils Garden: 21; Big Cypress: 20), so the nearest usable station is used, in neighboring Glades County about 20 km from Devils Garden. It is labeled this way on the dashboard. NOAA's metadata lists it under Glades County, not Hendry |
 | DeSoto | Arcadia | DeSoto | Only in-county station; records end April 2021, so 2022-24 are blank |
 | Highlands | Archbold Biological Station | Highlands | Complete, but a cold site (6.4 frost days a year on average, up to 25 in 2010) |
 
@@ -145,7 +149,7 @@ Precipitation deviation is relative to each county's own mean. Bearing acreage c
 
 **Withheld acreage.** Four of the 20 county-year totals are withheld by USDA (marked `(D)`): Hendry 2002 and 2007, DeSoto 2012, Highlands 2022. They are kept as blank rows with `status = withheld`, plotted as gaps, and named in the chart footnote, which is generated from the data. They are not estimated: a modeled value would sit beside measured ones, and since USDA withheld exactly these numbers there is nothing to validate an estimate against. Filling them would also be inconsistent: three of the four gaps fall at the start or end of a county's series (Hendry 2002 and 2007, Highlands 2022), which would require extrapolation rather than interpolation. For those four rows USDA published a single orange variety instead (Hendry 2002 and 2007 and Highlands 2022: Valencia only; DeSoto 2012: Mid & Navel only; e.g. Highlands 2022: Valencia, 27,449 acres); that is not a county total, so it is not used. Trend statements therefore use only each county's published totals (Polk 2002-2022, DeSoto 2002-2022, Hendry 2012-2022, Highlands 2002-2017).
 
-**County selection.** The four counties were chosen from the project's first list of seven candidate counties. Among counties with published 2022 totals, Polk (54,692 acres), Hendry (52,114) and DeSoto (42,234) rank first to third and Hardee (37,623, not on that list) ranks fourth. Highlands' 2022 total is withheld, so its rank that year is unknown; it is kept for its large published totals through 2017.
+**County selection.** The four counties are large orange producers. Among counties with published 2022 totals, Polk (54,692 acres), Hendry (52,114) and DeSoto (42,234) rank first to third and Hardee (37,623) ranks fourth but is not included. Highlands' 2022 total is withheld, so its rank that year is unknown; it is kept for its large published totals through 2017.
 
 ## Scenario tab
 
@@ -156,7 +160,7 @@ Illustrative, not estimated from data: the slider scales the 1990-2024 average f
 API keys are read from the `NASS_KEY` and `NOAA_API_KEY` (or `NOAA_TOKEN`) environment variables; nothing is stored in the code. Both fetchers retry transient failures, then stop and write nothing if any request fails, any Census acreage query returns other than exactly one row, or a county station has data in fewer than 20 years; there is no substitute-data fallback. Years in which a station has no observations are reported and left blank.
 
 What has and has not been verified:
-- The earlier version of the pipeline (four stations) was re-run end to end and reproduced the committed files, on Python 3.9 / pandas 2.0 and on Python 3.14 / pandas 3.0.
+- With the four-station weather (commit `65e8eee`), the pipeline was re-run end to end and reproduced the committed files, on Python 3.9 / pandas 2.0 and on Python 3.14 / pandas 3.0.
 - **The current station set was fetched, engineered and trained once, on Python 3.14 / pandas 3.0, on 2026-10-20.** Cross-version reproducibility of these new outputs has not been re-checked.
 - `requirements.txt` is pinned to the live deployment's versions and was installed and run in a clean Python 3.14 environment.
 - The feature code is covered by tests (`tests/`, run in CI).
