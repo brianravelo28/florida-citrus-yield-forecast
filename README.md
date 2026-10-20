@@ -6,7 +6,7 @@ A pipeline and interactive dashboard that pulls public data on Florida orange yi
 
 **Live dashboard:** <https://florida-citrus-yield-forecast.onrender.com/> (free tier: the first load after idle can take about 40 seconds)
 
-> **Scope.** USDA publishes citrus yield only for the whole state, so the forecasting models target **statewide** orange yield. Florida's oranges are grown mostly in the central and southern citrus belt (general knowledge, not checked in this project), so the weather inputs come from two NOAA stations in that region: a regional proxy, not a statewide measurement. The county comparison covers four leading counties (Polk, Hendry, DeSoto, Highlands) and only what is published or measurable: Census acreage and weather from one station per county. No county yield is estimated anywhere in this project.
+> **Scope.** USDA publishes citrus yield only for the whole state, so the forecasting models target **statewide** orange yield. Florida's oranges are grown mostly in the central and southern citrus belt (in the 2022 Census, Polk, Hendry, DeSoto and Hardee alone held 58% of the state's bearing orange acres, and the north Florida and Panhandle counties with published totals held 0.4%), so the weather inputs come from two NOAA stations in that region: a regional proxy, not a statewide measurement. The county comparison covers four leading counties (Polk, Hendry, DeSoto, Highlands) and only what is published or measurable: Census acreage and weather from one station per county. No county yield is estimated anywhere in this project.
 
 ## Headline findings
 
