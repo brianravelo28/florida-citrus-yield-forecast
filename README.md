@@ -38,8 +38,8 @@ Nothing is estimated or filled in. USDA withheld four county acreage totals (Hen
 ## Run it
 
 ```bash
-git clone https://github.com/brianravelo28/florida-citrus-yield-forecast.git
-cd florida-citrus-yield-forecast
+git clone https://github.com/brianravelo28/florida-orange-yield-dashboard.git
+cd florida-orange-yield-dashboard
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python run_dashboard.py          # http://127.0.0.1:8050  (run from the repo root)
