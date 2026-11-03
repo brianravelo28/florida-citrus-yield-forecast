@@ -2,7 +2,7 @@
 # These pins do not install on Python 3.9; use Python 3.12+ (3.14 matches Render and the tests).
 dash==4.4.1
 plotly==7.1.0
-pandas==3.0.6
+pandas==3.1.0
 numpy==2.5.4
 requests==2.34.2
 gunicorn==26.2.0
