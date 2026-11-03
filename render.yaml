@@ -1,10 +1,11 @@
-# Reference copy of the live service's settings. The running service may be
-# configured in the Render dashboard rather than from this file; the Python
-# version it actually uses is shown at the top of the build log.
+# Render Blueprint for the dashboard. The service name below sets its default
+# address (florida-orange-yield-dashboard.onrender.com). The Python version is
+# also shown at the top of the build log.
 services:
   - type: web
-    name: citrus-yield-forecast
+    name: florida-orange-yield-dashboard
     runtime: python
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn src.app:server --bind 0.0.0.0:$PORT
     envVars:
