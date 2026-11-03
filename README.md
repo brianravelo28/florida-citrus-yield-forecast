@@ -4,7 +4,7 @@
 
 A dashboard of Florida orange yield, county acreage and winter frost by weather station, built from public data from the USDA's National Agricultural Statistics Service (NASS) and NOAA (the National Oceanic and Atmospheric Administration). It asks one question: **what happened to Florida's orange yield and acreage, and does winter frost explain it?** It is for anyone following the decline of Florida's orange industry, including analysts and students.
 
-**Live dashboard:** <https://florida-citrus-yield-forecast.onrender.com/> (free tier: the first load after idle can take about 40 seconds)
+**Live dashboard:** <https://florida-orange-yield-dashboard.onrender.com/> (free tier: the first load after idle can take about 40 seconds)
 
 ## What the data shows
 
