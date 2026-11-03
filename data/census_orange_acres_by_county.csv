@@ -1,0 +1,216 @@
+county_name,year,bearing_acres,status
+Polk,2002,102295.0,published
+Highlands,2002,75984.0,published
+De Soto,2002,67394.0,published
+Hardee,2002,52018.0,published
+St. Lucie,2002,43891.0,published
+Martin,2002,42818.0,published
+Indian River,2002,27815.0,published
+Hillsborough,2002,22023.0,published
+Lake,2002,14849.0,published
+Lee,2002,12797.0,published
+Okeechobee,2002,10281.0,published
+Osceola,2002,9657.0,published
+Pasco,2002,8497.0,published
+Glades,2002,8047.0,published
+Orange,2002,7029.0,published
+Brevard,2002,5998.0,published
+Sarasota,2002,2933.0,published
+Volusia,2002,1249.0,published
+Marion,2002,739.0,published
+Miami-Dade,2002,652.0,published
+Seminole,2002,616.0,published
+Putnam,2002,120.0,published
+Alachua,2002,39.0,published
+Sumter,2002,29.0,published
+Flagler,2002,5.0,published
+Okaloosa,2002,1.0,published
+Jackson,2002,,withheld
+Jefferson,2002,,withheld
+Leon,2002,,withheld
+Walton,2002,,withheld
+Duval,2002,,withheld
+Taylor,2002,,withheld
+Citrus,2002,,withheld
+Clay,2002,,withheld
+Hernando,2002,,withheld
+Pinellas,2002,,withheld
+St. Johns,2002,,withheld
+Broward,2002,,withheld
+Charlotte,2002,,withheld
+Collier,2002,,withheld
+Hendry,2002,,withheld
+Manatee,2002,,withheld
+Palm Beach,2002,,withheld
+Polk,2007,83294.0,published
+Highlands,2007,53539.0,published
+De Soto,2007,46798.0,published
+Hardee,2007,36814.0,published
+Martin,2007,35675.0,published
+St. Lucie,2007,25667.0,published
+Indian River,2007,23039.0,published
+Hillsborough,2007,11061.0,published
+Charlotte,2007,10767.0,published
+Lake,2007,10046.0,published
+Pasco,2007,8479.0,published
+Okeechobee,2007,7945.0,published
+Osceola,2007,7384.0,published
+Lee,2007,7028.0,published
+Orange,2007,6705.0,published
+Brevard,2007,3769.0,published
+Marion,2007,1317.0,published
+Seminole,2007,577.0,published
+Miami-Dade,2007,204.0,published
+Broward,2007,186.0,published
+Jefferson,2007,1.0,published
+Holmes,2007,,withheld
+Jackson,2007,,withheld
+Santa Rosa,2007,,withheld
+Wakulla,2007,,withheld
+Walton,2007,,withheld
+Washington,2007,,withheld
+Columbia,2007,,withheld
+Duval,2007,,withheld
+Nassau,2007,,withheld
+Taylor,2007,,withheld
+Alachua,2007,,withheld
+Citrus,2007,,withheld
+Clay,2007,,withheld
+Flagler,2007,,withheld
+Gilchrist,2007,,withheld
+Hernando,2007,,withheld
+Levy,2007,,withheld
+Pinellas,2007,,withheld
+Putnam,2007,,withheld
+St. Johns,2007,,withheld
+Sumter,2007,,withheld
+Volusia,2007,,withheld
+Collier,2007,,withheld
+Glades,2007,,withheld
+Hendry,2007,,withheld
+Manatee,2007,,withheld
+Palm Beach,2007,,withheld
+Sarasota,2007,,withheld
+Hendry,2012,94267.0,published
+Polk,2012,65724.0,published
+Highlands,2012,43433.0,published
+Hardee,2012,33444.0,published
+Indian River,2012,21096.0,published
+Collier,2012,13474.0,published
+Manatee,2012,13110.0,published
+Lee,2012,7683.0,published
+Lake,2012,7508.0,published
+Hillsborough,2012,5669.0,published
+Osceola,2012,5459.0,published
+Pasco,2012,5161.0,published
+Orange,2012,4748.0,published
+Marion,2012,1088.0,published
+Volusia,2012,1087.0,published
+Brevard,2012,712.0,published
+Hernando,2012,700.0,published
+Sarasota,2012,426.0,published
+Seminole,2012,394.0,published
+Putnam,2012,209.0,published
+Citrus,2012,71.0,published
+Miami-Dade,2012,11.0,published
+Broward,2012,4.0,published
+Calhoun,2012,,withheld
+Escambia,2012,,withheld
+Gadsden,2012,,withheld
+Gulf,2012,,withheld
+Jackson,2012,,withheld
+Santa Rosa,2012,,withheld
+Wakulla,2012,,withheld
+Walton,2012,,withheld
+Columbia,2012,,withheld
+Duval,2012,,withheld
+Hamilton,2012,,withheld
+Nassau,2012,,withheld
+Suwannee,2012,,withheld
+Alachua,2012,,withheld
+Clay,2012,,withheld
+Flagler,2012,,withheld
+Levy,2012,,withheld
+Pinellas,2012,,withheld
+St. Johns,2012,,withheld
+Sumter,2012,,withheld
+Charlotte,2012,,withheld
+De Soto,2012,,withheld
+Glades,2012,,withheld
+Martin,2012,,withheld
+Okeechobee,2012,,withheld
+Palm Beach,2012,,withheld
+St. Lucie,2012,,withheld
+Polk,2017,66988.0,published
+Hendry,2017,65849.0,published
+De Soto,2017,46935.0,published
+Highlands,2017,40799.0,published
+Hardee,2017,37397.0,published
+Indian River,2017,24268.0,published
+St. Lucie,2017,19620.0,published
+Martin,2017,13977.0,published
+Lake,2017,6857.0,published
+Osceola,2017,4689.0,published
+Hillsborough,2017,4264.0,published
+Lee,2017,4161.0,published
+Okeechobee,2017,3844.0,published
+Orange,2017,3131.0,published
+Pasco,2017,2111.0,published
+Marion,2017,1228.0,published
+Volusia,2017,841.0,published
+Seminole,2017,494.0,published
+Brevard,2017,480.0,published
+Hernando,2017,406.0,published
+Putnam,2017,46.0,published
+Lafayette,2017,,withheld
+Alachua,2017,,withheld
+Bradford,2017,,withheld
+Citrus,2017,,withheld
+Pinellas,2017,,withheld
+Sumter,2017,,withheld
+Charlotte,2017,,withheld
+Collier,2017,,withheld
+Glades,2017,,withheld
+Manatee,2017,,withheld
+Miami-Dade,2017,,withheld
+Palm Beach,2017,,withheld
+Sarasota,2017,,withheld
+Polk,2022,54692.0,published
+Hendry,2022,52114.0,published
+De Soto,2022,42234.0,published
+Hardee,2022,37623.0,published
+Indian River,2022,17534.0,published
+Collier,2022,14998.0,published
+St. Lucie,2022,14650.0,published
+Manatee,2022,8563.0,published
+Charlotte,2022,4881.0,published
+Lake,2022,4402.0,published
+Lee,2022,3110.0,published
+Hillsborough,2022,2571.0,published
+Orange,2022,1469.0,published
+Okeechobee,2022,1214.0,published
+Pasco,2022,726.0,published
+Marion,2022,545.0,published
+Volusia,2022,452.0,published
+Palm Beach,2022,397.0,published
+Seminole,2022,353.0,published
+Lafayette,2022,174.0,published
+Brevard,2022,173.0,published
+Pinellas,2022,171.0,published
+Taylor,2022,58.0,published
+Citrus,2022,34.0,published
+Alachua,2022,11.0,published
+Santa Rosa,2022,1.0,published
+Wakulla,2022,1.0,published
+Escambia,2022,,withheld
+Walton,2022,,withheld
+Suwannee,2022,,withheld
+Hernando,2022,,withheld
+Osceola,2022,,withheld
+Putnam,2022,,withheld
+Sumter,2022,,withheld
+Glades,2022,,withheld
+Highlands,2022,,withheld
+Martin,2022,,withheld
+Miami-Dade,2022,,withheld
+Sarasota,2022,,withheld

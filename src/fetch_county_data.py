@@ -2,10 +2,10 @@
 Fetch real, county-specific data for four large Florida orange-producing
 counties: Polk, Hendry, DeSoto, Highlands.
 
-Unlike fetch_data.py (which sources statewide YIELD, since NASS publishes no
-county-level citrus PRODUCTION/YIELD in any year or source we checked,
-including the Census of Agriculture), this script pulls only what NASS
-actually publishes at the county level - bearing ACREAGE, in Census years
+Unlike fetch_data.py (which sources statewide YIELD, since QuickStats has no
+county-level orange PRODUCTION/YIELD in any year or source, including the
+Census of Agriculture), this script pulls only what NASS publishes at the
+county level in QuickStats - bearing ACREAGE, in Census years
 (every 5 years; some totals are withheld by USDA and left blank, never
 estimated) - plus real local daily weather from verified NOAA
 stations physically in or near each county.
@@ -216,6 +216,63 @@ def fetch_all_county_weather():
     return df
 
 
+# Florida county FIPS codes are the odd numbers 001-133 (prefixed with the state code 12),
+# plus Miami-Dade (086). Retired codes such as 025 (old Dade County) return an empty record
+# and are skipped.
+FLORIDA_COUNTY_FIPS = [f"12{n:03d}" for n in sorted(list(range(1, 134, 2)) + [86])]
+
+
+def fetch_station_metadata():
+    """Station name, coordinates and county from NOAA's own station metadata.
+
+    Nothing is typed by hand: coordinates come from the /stations/<id> record,
+    and the county is whichever Florida county's station list (locationid) the
+    station appears in. Labels a station by the county NOAA lists it under,
+    which for Moore Haven Lock 1 is Glades County, not Hendry.
+    """
+    base = "https://www.ncei.noaa.gov/cdo-web/api/v2"
+    headers = {"token": noaa_token()}
+    wanted = {sid: (panel, name) for panel, st in COUNTY_STATIONS.items() for name, sid in st.items()}
+
+    records = {}
+    for sid, (panel, label) in wanted.items():
+        meta = get_json(f"{base}/stations/GHCND:{sid}", {}, headers=headers)
+        records[sid] = {
+            "station_id": sid, "station_label": label, "station_name_noaa": meta["name"],
+            "latitude": meta["latitude"], "longitude": meta["longitude"],
+            "noaa_mindate": meta.get("mindate"), "noaa_maxdate": meta.get("maxdate"),
+            "panel_county": panel, "county_noaa": None,
+        }
+        time.sleep(0.2)
+
+    for fips in FLORIDA_COUNTY_FIPS:
+        location = get_json(f"{base}/locations/FIPS:{fips}", {}, headers=headers)
+        if "name" not in location:
+            continue
+        county = location["name"].replace(", FL", "").replace(" County", "")
+        offset = 1
+        while True:
+            data = get_json(f"{base}/stations", {"datasetid": "GHCND", "locationid": f"FIPS:{fips}",
+                                                 "limit": 1000, "offset": offset}, headers=headers)
+            for st in data.get("results", []):
+                sid = st["id"].split(":", 1)[1]
+                if sid in records:
+                    records[sid]["county_noaa"] = county
+            total = data.get("metadata", {}).get("resultset", {}).get("count", 0)
+            if offset + 1000 > total:
+                break
+            offset += 1000
+            time.sleep(0.2)
+        time.sleep(0.2)
+
+    unresolved = [r["station_label"] for r in records.values() if not r["county_noaa"]]
+    if unresolved:
+        raise FetchError(f"NOAA lists no Florida county for: {unresolved}")
+    df = pd.DataFrame(records.values())
+    print(f"  [OK] Station metadata: {len(df)} stations, counties {sorted(df['county_noaa'])}")
+    return df
+
+
 def main():
     print("=" * 60)
     print("COUNTY-LEVEL REAL DATA: Polk, Hendry, DeSoto, Highlands")
@@ -226,6 +283,8 @@ def main():
         df_acreage = fetch_bearing_acreage()
         print("\nFetching local weather per county...")
         df_weather = fetch_all_county_weather()
+        print("\nFetching station metadata (coordinates, county)...")
+        df_stations = fetch_station_metadata()
     except FetchError as e:
         print(f"\n[FAILED] {e}")
         print("Nothing was written; existing data files are unchanged.")
@@ -235,6 +294,8 @@ def main():
     print(f"\n[OK] Saved: data/county_acreage.csv ({len(df_acreage)} records)")
     df_weather.to_csv("data/county_weather.csv", index=False)
     print(f"[OK] Saved: data/county_weather.csv ({len(df_weather)} records)")
+    df_stations.to_csv("data/stations.csv", index=False)
+    print(f"[OK] Saved: data/stations.csv ({len(df_stations)} stations)")
 
     # Summary
     print("\n" + "=" * 60)

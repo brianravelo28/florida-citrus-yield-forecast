@@ -39,12 +39,9 @@ MANIFEST
 *.sublime-project
 *.sublime-workspace
 
-# Data & Results
-data/*.csv
+# Data: the CSVs the app reads are committed (see docs/SCHEMA.md); other formats are not
 data/*.json
 data/*.xlsx
-results/*.csv
-results/*.json
 *.parquet
 
 # Raw/Large Data Files

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Run the Citrus Yield Forecasting Dash app.
+Run the Florida orange yield, acreage and frost dashboard.
 Execute this to start the interactive dashboard at http://localhost:8050
 """
 
@@ -13,20 +13,20 @@ os.chdir(Path(__file__).parent)
 
 # Check if all required data files exist
 required_files = [
-    'data/df_model.csv',
-    'results/stress_indicator.csv',
-    'results/model_results.json'
+    'data/nass_yield.csv',
+    'data/county_features.csv',
+    'data/stations.csv',
+    'data/station_frost_summary.csv',
 ]
 
 print("Checking required data files...")
 for file in required_files:
     if not Path(file).exists():
         print(f"ERROR: Missing {file}")
-        print("Please run the full pipeline first:")
+        print("Please run the pipeline first (see the README):")
         print("  python src/fetch_data.py")
-        print("  python src/feature_engineering.py")
-        print("  python src/train_models.py")
-        print("  python src/stress_indicator.py")
+        print("  python src/fetch_county_data.py")
+        print("  python src/county_feature_engineering.py")
         sys.exit(1)
 
 print("[OK] All data files present\n")
@@ -35,7 +35,7 @@ print("[OK] All data files present\n")
 try:
     from src.app import app
     print("=" * 60)
-    print("FLORIDA CITRUS YIELD FORECASTING DASHBOARD")
+    print("FLORIDA ORANGE YIELD, ACREAGE AND WINTER FROST")
     print("=" * 60)
     print("\nDashboard is starting...")
     print("Open your browser to: http://127.0.0.1:8050")
