@@ -18,9 +18,9 @@ On the free tier the service sleeps when idle, so the first request after a paus
 
 ## Data files must be committed
 
-The app reads `data/*.csv` and `results/*` at import time. `.gitignore` excludes `data/*.csv` and `results/*.json` by default, so the files the app needs were added with `git add -f`. If a deploy crashes with `FileNotFoundError: data/...csv`, a required file is missing from the repo.
+The app reads `data/*.csv` at import time, so the files below must be committed. If a deploy crashes with `FileNotFoundError: data/...csv`, a required file is missing from the repo.
 
-The files the app loads: `data/df_model.csv`, `data/county_features.csv`, `results/stress_indicator.csv`, `results/model_results.json`.
+The files the app loads: `data/nass_yield.csv`, `data/county_features.csv`, `data/stations.csv`, `data/station_frost_summary.csv`.
 
 ## Updating
 
