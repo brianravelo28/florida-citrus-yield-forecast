@@ -213,7 +213,6 @@ Grapefruit,CA,2023,production_boxes,4500000.0,,reported
 Grapefruit,CA,2024,production_boxes,3900000.0,,reported
 Grapefruit,CA,2025,production_boxes,4300000.0,,reported
 Grapefruit,CA,2026,production_boxes,4400000.0,,preliminary
-Grapefruit,CA,2027,production_boxes,4800000.0,,reported
 Grapefruit,CA,2013,production_tons,180000.0,,reported
 Grapefruit,CA,2014,production_tons,154000.0,,reported
 Grapefruit,CA,2015,production_tons,172000.0,,reported
@@ -228,7 +227,6 @@ Grapefruit,CA,2023,production_tons,180000.0,,reported
 Grapefruit,CA,2024,production_tons,156000.0,,reported
 Grapefruit,CA,2025,production_tons,172000.0,,reported
 Grapefruit,CA,2026,production_tons,176000.0,,preliminary
-Grapefruit,CA,2027,production_tons,192000.0,,reported
 Grapefruit,CA,1990,value_of_production_usd,75457000.0,,reported
 Grapefruit,CA,1991,value_of_production_usd,51128000.0,,reported
 Grapefruit,CA,1992,value_of_production_usd,61120000.0,,reported
@@ -414,7 +412,6 @@ Grapefruit,FL,2023,production_boxes,1810000.0,,reported
 Grapefruit,FL,2024,production_boxes,1790000.0,,reported
 Grapefruit,FL,2025,production_boxes,1300000.0,,reported
 Grapefruit,FL,2026,production_boxes,1350000.0,,preliminary
-Grapefruit,FL,2027,production_boxes,1300000.0,,reported
 Grapefruit,FL,2013,production_tons,780000.0,,reported
 Grapefruit,FL,2014,production_tons,665000.0,,reported
 Grapefruit,FL,2015,production_tons,548000.0,,reported
@@ -429,7 +426,6 @@ Grapefruit,FL,2023,production_tons,77000.0,,reported
 Grapefruit,FL,2024,production_tons,76000.0,,reported
 Grapefruit,FL,2025,production_tons,55000.0,,reported
 Grapefruit,FL,2026,production_tons,57000.0,,preliminary
-Grapefruit,FL,2027,production_tons,55000.0,,reported
 Grapefruit,FL,1990,value_of_production_usd,260275000.0,,reported
 Grapefruit,FL,1991,value_of_production_usd,328770000.0,,reported
 Grapefruit,FL,1992,value_of_production_usd,349688000.0,,reported
@@ -613,7 +609,6 @@ Grapefruit,TX,2023,production_boxes,2250000.0,,reported
 Grapefruit,TX,2024,production_boxes,2400000.0,,reported
 Grapefruit,TX,2025,production_boxes,2000000.0,,reported
 Grapefruit,TX,2026,production_boxes,2100000.0,,preliminary
-Grapefruit,TX,2027,production_boxes,2400000.0,,reported
 Grapefruit,TX,2013,production_tons,244000.0,,reported
 Grapefruit,TX,2014,production_tons,228000.0,,reported
 Grapefruit,TX,2015,production_tons,170000.0,,reported
@@ -628,7 +623,6 @@ Grapefruit,TX,2023,production_tons,90000.0,,reported
 Grapefruit,TX,2024,production_tons,96000.0,,reported
 Grapefruit,TX,2025,production_tons,80000.0,,reported
 Grapefruit,TX,2026,production_tons,84000.0,,preliminary
-Grapefruit,TX,2027,production_tons,96000.0,,reported
 Grapefruit,TX,1990,value_of_production_usd,14162000.0,,reported
 Grapefruit,TX,1992,value_of_production_usd,983000.0,,reported
 Grapefruit,TX,1993,value_of_production_usd,12856000.0,,reported
@@ -812,7 +806,6 @@ Lemons,AZ,2023,production_boxes,1400000.0,,reported
 Lemons,AZ,2024,production_boxes,950000.0,,reported
 Lemons,AZ,2025,production_boxes,1120000.0,,reported
 Lemons,AZ,2026,production_boxes,720000.0,,preliminary
-Lemons,AZ,2027,production_boxes,850000.0,,reported
 Lemons,AZ,2013,production_tons,72000.0,,reported
 Lemons,AZ,2014,production_tons,72000.0,,reported
 Lemons,AZ,2015,production_tons,80000.0,,reported
@@ -827,7 +820,6 @@ Lemons,AZ,2023,production_tons,56000.0,,reported
 Lemons,AZ,2024,production_tons,38000.0,,reported
 Lemons,AZ,2025,production_tons,45000.0,,reported
 Lemons,AZ,2026,production_tons,29000.0,,preliminary
-Lemons,AZ,2027,production_tons,34000.0,,reported
 Lemons,AZ,1990,value_of_production_usd,39846000.0,,reported
 Lemons,AZ,1991,value_of_production_usd,47302000.0,,reported
 Lemons,AZ,1992,value_of_production_usd,66332000.0,,reported
@@ -1013,7 +1005,6 @@ Lemons,CA,2023,production_boxes,25800000.0,,reported
 Lemons,CA,2024,production_boxes,24500000.0,,reported
 Lemons,CA,2025,production_boxes,26400000.0,,reported
 Lemons,CA,2026,production_boxes,26000000.0,,preliminary
-Lemons,CA,2027,production_boxes,28000000.0,,reported
 Lemons,CA,2013,production_tons,840000.0,,reported
 Lemons,CA,2014,production_tons,752000.0,,reported
 Lemons,CA,2015,production_tons,824000.0,,reported
@@ -1028,7 +1019,6 @@ Lemons,CA,2023,production_tons,1032000.0,,reported
 Lemons,CA,2024,production_tons,980000.0,,reported
 Lemons,CA,2025,production_tons,1056000.0,,reported
 Lemons,CA,2026,production_tons,1040000.0,,preliminary
-Lemons,CA,2027,production_tons,1120000.0,,reported
 Lemons,CA,1990,value_of_production_usd,239979000.0,,reported
 Lemons,CA,1991,value_of_production_usd,242269000.0,,reported
 Lemons,CA,1992,value_of_production_usd,190894000.0,,reported
@@ -1109,10 +1099,8 @@ Lemons,FL,2025,price_usd_per_box,15.6,,reported
 Lemons,FL,2026,price_usd_per_box,17.3,,preliminary
 Lemons,FL,2025,production_boxes,670000.0,,reported
 Lemons,FL,2026,production_boxes,900000.0,,preliminary
-Lemons,FL,2027,production_boxes,950000.0,,reported
 Lemons,FL,2025,production_tons,30000.0,,reported
 Lemons,FL,2026,production_tons,41000.0,,preliminary
-Lemons,FL,2027,production_tons,43000.0,,reported
 Lemons,FL,2025,value_of_production_usd,10452000.0,,reported
 Lemons,FL,2026,value_of_production_usd,15570000.0,,preliminary
 Lemons,FL,2025,yield_boxes_per_acre,134.0,,reported
@@ -1340,7 +1328,6 @@ Oranges,CA,2023,production_boxes,44600000.0,,reported
 Oranges,CA,2024,production_boxes,45400000.0,,reported
 Oranges,CA,2025,production_boxes,42800000.0,,reported
 Oranges,CA,2026,production_boxes,49500000.0,,preliminary
-Oranges,CA,2027,production_boxes,50500000.0,,reported
 Oranges,CA,2013,production_tons,2180000.0,,reported
 Oranges,CA,2014,production_tons,1976000.0,,reported
 Oranges,CA,2015,production_tons,1944000.0,,reported
@@ -1355,7 +1342,6 @@ Oranges,CA,2023,production_tons,1784000.0,,reported
 Oranges,CA,2024,production_tons,1816000.0,,reported
 Oranges,CA,2025,production_tons,1712000.0,,reported
 Oranges,CA,2026,production_tons,1980000.0,,preliminary
-Oranges,CA,2027,production_tons,2020000.0,,reported
 Oranges,CA,1990,value_of_production_usd,555055000.0,,reported
 Oranges,CA,1991,value_of_production_usd,372284000.0,,reported
 Oranges,CA,1992,value_of_production_usd,433994000.0,,reported
@@ -1541,7 +1527,6 @@ Oranges,FL,2023,production_boxes,15820000.0,,reported
 Oranges,FL,2024,production_boxes,18060000.0,,reported
 Oranges,FL,2025,production_boxes,12280000.0,,reported
 Oranges,FL,2026,production_boxes,12950000.0,,preliminary
-Oranges,FL,2027,production_boxes,10000000.0,,reported
 Oranges,FL,2013,production_tons,6013000.0,,reported
 Oranges,FL,2014,production_tons,4712000.0,,reported
 Oranges,FL,2015,production_tons,4363000.0,,reported
@@ -1556,7 +1541,6 @@ Oranges,FL,2023,production_tons,712000.0,,reported
 Oranges,FL,2024,production_tons,813000.0,,reported
 Oranges,FL,2025,production_tons,553000.0,,reported
 Oranges,FL,2026,production_tons,583000.0,,preliminary
-Oranges,FL,2027,production_tons,450000.0,,reported
 Oranges,FL,1990,value_of_production_usd,888097000.0,,reported
 Oranges,FL,1991,value_of_production_usd,1180715000.0,,reported
 Oranges,FL,1992,value_of_production_usd,1094369000.0,,reported
@@ -1740,7 +1724,6 @@ Oranges,TX,2023,production_boxes,1130000.0,,reported
 Oranges,TX,2024,production_boxes,1180000.0,,reported
 Oranges,TX,2025,production_boxes,850000.0,,reported
 Oranges,TX,2026,production_boxes,1090000.0,,preliminary
-Oranges,TX,2027,production_boxes,1200000.0,,reported
 Oranges,TX,2013,production_tons,76000.0,,reported
 Oranges,TX,2014,production_tons,76000.0,,reported
 Oranges,TX,2015,production_tons,62000.0,,reported
@@ -1755,7 +1738,6 @@ Oranges,TX,2023,production_tons,48000.0,,reported
 Oranges,TX,2024,production_tons,50000.0,,reported
 Oranges,TX,2025,production_tons,37000.0,,reported
 Oranges,TX,2026,production_tons,47000.0,,preliminary
-Oranges,TX,2027,production_tons,51000.0,,reported
 Oranges,TX,1990,value_of_production_usd,8256000.0,,reported
 Oranges,TX,1992,value_of_production_usd,431000.0,,reported
 Oranges,TX,1993,value_of_production_usd,4156000.0,,reported
@@ -2213,7 +2195,6 @@ Tangerines,CA,2023,production_boxes,23500000.0,,reported
 Tangerines,CA,2024,production_boxes,27200000.0,,reported
 Tangerines,CA,2025,production_boxes,30400000.0,,reported
 Tangerines,CA,2026,production_boxes,31000000.0,,preliminary
-Tangerines,CA,2027,production_boxes,32000000.0,,reported
 Tangerines,CA,2013,production_tons,520000.0,,reported
 Tangerines,CA,2014,production_tons,588000.0,,reported
 Tangerines,CA,2015,production_tons,740000.0,,reported
@@ -2228,7 +2209,6 @@ Tangerines,CA,2023,production_tons,940000.0,,reported
 Tangerines,CA,2024,production_tons,1088000.0,,reported
 Tangerines,CA,2025,production_tons,1216000.0,,reported
 Tangerines,CA,2026,production_tons,1240000.0,,preliminary
-Tangerines,CA,2027,production_tons,1280000.0,,reported
 Tangerines,CA,1990,value_of_production_usd,31193000.0,,reported
 Tangerines,CA,1991,value_of_production_usd,24528000.0,,reported
 Tangerines,CA,1992,value_of_production_usd,35357000.0,,reported
@@ -2414,7 +2394,6 @@ Tangerines,FL,2023,production_boxes,480000.0,,reported
 Tangerines,FL,2024,production_boxes,450000.0,,reported
 Tangerines,FL,2025,production_boxes,400000.0,,reported
 Tangerines,FL,2026,production_boxes,460000.0,,preliminary
-Tangerines,FL,2027,production_boxes,450000.0,,reported
 Tangerines,FL,2013,production_tons,156000.0,,reported
 Tangerines,FL,2014,production_tons,138000.0,,reported
 Tangerines,FL,2015,production_tons,108000.0,,reported
@@ -2429,7 +2408,6 @@ Tangerines,FL,2023,production_tons,23000.0,,reported
 Tangerines,FL,2024,production_tons,21000.0,,reported
 Tangerines,FL,2025,production_tons,19000.0,,reported
 Tangerines,FL,2026,production_tons,22000.0,,preliminary
-Tangerines,FL,2027,production_tons,21000.0,,reported
 Tangerines,FL,1990,value_of_production_usd,30681000.0,,reported
 Tangerines,FL,1991,value_of_production_usd,38708000.0,,reported
 Tangerines,FL,1992,value_of_production_usd,53811000.0,,reported

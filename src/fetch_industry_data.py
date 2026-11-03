@@ -85,7 +85,14 @@ def build_table():
     out = pd.DataFrame(records).sort_values(["fruit", "state", "measure", "year"]).reset_index(drop=True)
     if out.empty:
         raise FetchError("NASS returned no citrus rows")
-    return out
+    # QuickStats can return NASS's forecast for the coming season even when the request stops at
+    # END_YEAR (observed: year 2027 production, issued October 2026). A forecast is not data, so
+    # anything after END_YEAR is dropped, and the drop is reported.
+    after = out[out["year"] > END_YEAR]
+    if len(after):
+        print(f"  [NOTE] dropped {len(after)} rows after {END_YEAR} (NASS forecasts for the coming season): "
+              f"years {sorted(after['year'].unique())}, measures {sorted(after['measure'].unique())}")
+    return out[out["year"] <= END_YEAR].reset_index(drop=True)
 
 
 def sanity_report(df, ratio=3.0):
