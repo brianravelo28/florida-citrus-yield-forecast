@@ -1,19 +1,21 @@
 # API Sources and Notes
 
-How this project queries USDA NASS and NOAA, plus the non-obvious behaviors that cost time to discover. API keys are free; export them as the `NASS_KEY` and `NOAA_API_KEY` environment variables (`NOAA_TOKEN` is accepted as an alternative name for the NOAA key). Both fetch scripts read them at run time and stop with a clear message if they are unset; no key is stored in the code.
+How this project queries USDA NASS and NOAA, plus the non-obvious behaviors that cost time to discover. API keys are free; export them as the `NASS_KEY` and `NOAA_API_KEY` environment variables (`NOAA_TOKEN` is accepted as an alternative name for the NOAA key). The fetch scripts read them at run time and stop with a clear message if they are unset; no key is stored in the code.
 
 ## USDA NASS QuickStats
 
 Docs: <https://quickstats.nass.usda.gov/api>
 
-Statewide yield query (`src/fetch_data.py`):
+Citrus by state query (`src/fetch_industry_data.py`), one request per fruit and measure:
 
 ```
 GET https://quickstats.nass.usda.gov/api/api_GET/
-  key=<NASS_KEY>  commodity_desc=ORANGES  state_alpha=FL  agg_level_desc=STATE
-  statisticcat_desc=YIELD  unit_desc=BOXES / ACRE  class_desc=ALL CLASSES
-  util_practice_desc=ALL UTILIZATION PRACTICES  year__GE=1990  year__LE=2026  format=json
+  key=<NASS_KEY>  commodity_desc=<ORANGES|GRAPEFRUIT|TANGERINES|LEMONS|TANGELOS>  agg_level_desc=STATE
+  source_desc=SURVEY  statisticcat_desc=<AREA BEARING|YIELD|PRODUCTION|PRICE RECEIVED>  unit_desc=<see below>
+  year__GE=1990  year__LE=2026  format=json
 ```
+
+Units used: `ACRES`, `BOXES / ACRE`, `BOXES` and `TONS` (production, utilization `UTILIZED`), `$, PHD EQUIV` (value), `$ / BOX, PHD EQUIV` (price, reference period `MARKETING YEAR`). The script then keeps `class_desc=ALL CLASSES` and `domain_desc=TOTAL` rows.
 
 County bearing-acreage query (`src/fetch_county_data.py`; `src/fetch_county_ranking.py` runs the same query with `agg_level_desc=COUNTY` for every county): `commodity_desc=ORANGES`, `county_name=<POLK|HENDRY|DE SOTO|HIGHLANDS>`, `source_desc=CENSUS`, `year=<2002|2007|2012|2017|2022>`, `statisticcat_desc=AREA BEARING`, `unit_desc=ACRES`.
 
@@ -25,7 +27,10 @@ Things to know:
 - **The value field is `Value` (capital V).** Reading lowercase `value` silently yields nothing. Suppression codes such as `(D)` can arrive padded with whitespace.
 - **QuickStats has yield and production only at state level.** County-level rows for oranges and citrus totals cover Census area statistics only (`AREA BEARING`, `AREA NON-BEARING`); querying `PRODUCTION` or `YIELD` at county level returns HTTP 400. NASS's separate Citrus Summary publication does list county production, but states that it is an apportionment of the statewide harvest (by bearing trees, fruit per tree, and drop and size surveys), not a county measurement. The only yield unit is `BOXES / ACRE` (no `LB / ACRE`), converted here at 90 lb/box.
 - **One county-year returns several rows.** Besides `class_desc=ALL CLASSES` there are single-variety rows (`VALENCIA`, `MID & NAVEL`) and other domain rows, and their order is not guaranteed. Always filter `class_desc=ALL CLASSES` and `domain_desc=TOTAL`; taking "the first published row" can silently return a single variety that looks like a county total.
-- **The newest season is preliminary.** NASS loads the season ending in the current year (2026: 102 boxes/acre) as an August estimate and revises it a year later; `src/fetch_data.py` marks it `status = preliminary`.
+- **The newest season is preliminary.** NASS loads the season ending in the current year (2026) as an August estimate and revises it a year later; `src/fetch_industry_data.py` marks it `status = preliminary`.
+- **`year__LE` does not exclude forecasts.** QuickStats returned NASS's forecast for the coming season (year 2027 production, issued October 2026) even with `year__LE=2026`. The fetch drops rows after the last season and prints the drop.
+- **Several rows share a statistic.** Production comes in boxes, tons and dollars, and by utilization (`UTILIZED`, `FRESH MARKET`, `PROCESSING`); yield and price for Florida oranges also appear in other units (gallons per box; `ON TREE EQUIV`, `FOB`). Always filter `unit_desc`, `util_practice_desc`, `class_desc`, `domain_desc` and `reference_period_desc` (price is for the `MARKETING YEAR`, the others for `YEAR`).
+- **Check a yield against its parts.** QuickStats can contain a value that conflicts with NASS's own production and acreage (California oranges 2022 yield: 58, against about 285 implied). Compare yield with utilized boxes divided by bearing acres.
 - **`(D)` means withheld**, not zero or missing: NASS withholds the value to avoid disclosing individual operations' data. A total can be `(D)` while a single variety under it is published.
 - **County names follow NASS spelling:** DeSoto County is `DE SOTO`; `DESOTO` returns HTTP 400.
 - **An invalid parameter combination returns HTTP 400** (`bad request - invalid query`) without saying which parameter is wrong. Narrow the query to find it.

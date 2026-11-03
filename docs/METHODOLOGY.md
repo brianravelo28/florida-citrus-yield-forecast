@@ -6,16 +6,48 @@ Terms: **NASS** (USDA National Agricultural Statistics Service); **NOAA** (Natio
 
 ## Scope
 
-The project describes Florida orange yield, county acreage and winter frost by weather station. It builds no model and makes no forecast. Yield is published only statewide, so it is shown statewide; the county panels show Census bearing acreage and weather from one NOAA station per county.
+The project describes the US citrus industry by fruit and state (bearing acreage, yield, utilized production, price and value of production, 1990-2026) and, as a deep dive, Florida orange acreage by county and winter frost by weather station. It builds no model and makes no forecast.
 
-## Data sources and pull dates
+## Citrus data (NASS)
 
-All files were pulled on 2026-11-03 and are real observations; none is synthetic. NOAA can backfill published data, and NASS revises its newest season a year later, so treat each pull as a snapshot of its date.
+`src/fetch_industry_data.py` pulls state-level survey data from QuickStats (`agg_level_desc=STATE`, `source_desc=SURVEY`) for oranges, grapefruit, tangerines, lemons and tangelos, for Florida, California, Texas and Arizona, and writes `data/citrus_by_state.csv` (one row per fruit, state, year and measure). All files were pulled on 2026-11-03 and are real observations; none is synthetic. NASS revises its newest season a year later, so treat each pull as a snapshot of its date.
 
-1. **Yield** (`src/fetch_data.py`): QuickStats `ORANGES`, `YIELD`, `BOXES / ACRE`, all classes, state level, 1990-2026, times 90 lb per box (the standard Florida orange box). The fetcher requires every year to be present. NASS labels a season by its end year: 2023 is the 2022-23 season. The season ending in 2026 is NASS's preliminary estimate (published August 2026), marked `status = preliminary`; all earlier seasons are `reported`.
-2. **County acreage** (`src/fetch_county_data.py`): Census of Agriculture bearing orange acres, all varieties combined, 2002, 2007, 2012, 2017 and 2022. `src/fetch_county_ranking.py` fetches the same figure for every Florida county, to check the county choice.
-3. **Weather** (`src/fetch_county_data.py`): daily TMAX, TMIN and PRCP from NOAA's Climate Data Online API. Readings outside plausible Florida bounds (TMAX 20-110 F, TMIN -5-85 F, PRCP 0-20 in) are dropped as sensor errors; this removed 7 of 145,827 records (Lakeland 2: 2, Arcadia: 4, Moore Haven Lock 1: 1).
-4. **Station locations:** coordinates and county come from NOAA's station metadata, fetched with the weather (not typed by hand). The county is the Florida county whose NOAA station list contains the station.
+| Measure | QuickStats statistic and unit | Notes |
+|---|---|---|
+| Bearing acres | `AREA BEARING`, `ACRES` | |
+| Yield | `YIELD`, `BOXES / ACRE` | Florida oranges also carry a gallons-per-box series; only boxes per acre is used |
+| Utilized production | `PRODUCTION`, `BOXES` and `TONS`, utilization `UTILIZED` | Boxes cover 1990-2026; tons exist only for recent years, so tons are fetched but not used for totals |
+| Value of production | `PRODUCTION`, `$, PHD EQUIV` | Packinghouse-door equivalent dollars, nominal |
+| Price per box | `PRICE RECEIVED`, `$ / BOX, PHD EQUIV`, marketing year | |
+
+Only the all-classes total is used (not single varieties or fresh/processing splits), and the script stops if a state-year has more than one row.
+
+- **Seasons.** NASS labels a season by its end year (2023 is the 2022-23 season). The season ending in 2026 is NASS's preliminary estimate (published August 2026) and is marked `status = preliminary`; all earlier seasons are `reported`.
+- **Forecast rows are dropped.** QuickStats can return NASS's forecast for the coming season even when the request stops at 2026 (it returned 22 production rows for the season ending in 2027, issued October 2026). A forecast is not data, so anything after the last season is dropped, the drop is printed, and a test checks the file.
+- **Blanks stay blank.** A value NASS withheld ("(D)") or marked not available is kept as a blank row with the reason in the `note` column. Of 2,483 values, 63 are blank (48 withheld, 15 not available), mostly California and Arizona value and price figures for tangerines and lemons in 2009-2016 and Arizona oranges in 2010-2012. Texas has no 1991 row at all for oranges or grapefruit.
+
+## Totals and gaps
+
+A total (for a year, a state or a fruit) is shown only when every series NASS publishes in that year has a value. A series counts as published in a year if the year falls between its first and last published year (`src/citrus_data.py`). So a withheld value, a missing year (Texas 1991) or a series that has not started leaves a visible gap, while a series that has ended (Arizona oranges after 2012) simply stops being part of the total. Stacked charts leave a whole year empty instead of drawing a partial stack. Consequences: the acreage total has a gap in 2010-2012, and the value totals in 1991 and 2009-2016. A published sum for 2012 is already $3.42 billion with four values missing, so the true 2012 total could exceed 2017's $3.53 billion; **the dashboard therefore states no peak for the US value total.** Acreage peaks and per-state figures use each total's own complete years.
+
+## Checks on the data
+
+- **Yield against production and acreage.** NASS defines yield as utilized boxes divided by bearing acres, and in the data the two agree. The fetch compares every published yield with that ratio (463 fruit-state-years) and flags any that differ by more than 15%. **One does: California oranges in 2022.** QuickStats publishes 58 boxes per acre, but the same database gives 39.1 million utilized boxes and 137,000 bearing acres for 2022, which imply about 285 (the 2022 crop fell about 20% from 2021 in a drought year, but not to 58). NASS's printed [Citrus Fruits 2022 Summary](https://esmis.nal.usda.gov/sites/default/release-files/j9602060k/pn89ff24k/1544cx74m/cfrt0922.txt) (September 2022, table "Orange Acreage, Yield, Utilization, Price, and Value by Type") gives California all oranges for 2021-22 as 140,000 acres, 289 boxes per acre and 40,400 thousand boxes, with later revisions to the production and acreage figures. The published 58 is therefore at odds with the printed report and with two other values in QuickStats. It stays in the data file; the dashboard draws it as a gap with a footnote, and does not substitute a computed value. How the error entered QuickStats is not known.
+- **Other unusual values.** The fetch also prints yields and prices more than three times away from their own series' median. The ones examined (Florida after 2023, Texas 1992) agree with NASS's production and acreage: Florida's collapse and the Texas freeze-year lows are real, not data errors.
+
+## Nominal dollars, shares and units
+
+- **Dollars are nominal.** Value of production and price are not adjusted for inflation, so dollar values are not compared across decades as if they bought the same amount. Each state's **share** of the US value in the same year is unaffected by inflation, so the headline uses shares and physical measures (acres, boxes) for change over time. An inflation adjustment would need a price index from another source and is not applied.
+- **Yield units differ by state.** Box weights differ across states, so raw boxes per acre are not comparable across states. The dashboard offers yield as a share of each state's own peak, and notes this on the yield chart.
+- **Dollars add up, boxes do not.** Different fruits and states have different box weights, so totals across them use acres and dollars only.
+
+## Florida data (county acreage and weather)
+
+1. **County acreage** (`src/fetch_county_data.py`): Census of Agriculture bearing orange acres, all varieties combined, 2002, 2007, 2012, 2017 and 2022. `src/fetch_county_ranking.py` fetches the same figure for every Florida county, to check the county choice.
+2. **Weather** (`src/fetch_county_data.py`): daily TMAX, TMIN and PRCP from NOAA's Climate Data Online API, 1990-2026. Readings outside plausible Florida bounds (TMAX 20-110 F, TMIN -5-85 F, PRCP 0-20 in) are dropped as sensor errors; this removed 7 of 145,827 records (Lakeland 2: 2, Arcadia: 4, Moore Haven Lock 1: 1).
+3. **Station locations:** coordinates and county come from NOAA's station metadata, fetched with the weather (not typed by hand). The county is the Florida county whose NOAA station list contains the station.
+
+The sections below cover the Florida deep dive.
 
 ## Counties and stations
 
@@ -93,6 +125,6 @@ Bearing acreage comes from the Census of Agriculture every five years and is lef
 
 ## Reproducibility
 
-API keys are read from the `NASS_KEY` and `NOAA_API_KEY` (or `NOAA_TOKEN`) environment variables; nothing is stored in the code. Every fetcher retries transient failures, then stops and writes nothing if any request fails, any Census acreage query returns other than exactly one row, a county station has data in fewer than 20 years, or NOAA lists no Florida county for a station. Years in which a station has no observations are reported and left blank.
+API keys are read from the `NASS_KEY` and `NOAA_API_KEY` (or `NOAA_TOKEN`) environment variables; nothing is stored in the code. Every fetcher retries transient failures, then stops and writes nothing if any request fails, any Census acreage query returns other than exactly one row, a state-year has more than one citrus row, a county station has data in fewer than 20 years, or NOAA lists no Florida county for a station. Years in which a station has no observations are reported and left blank.
 
-What was run: all four fetch scripts and the feature step ran end to end on Python 3.14 / pandas 3.0 on 2026-11-03, and the committed data files are their output. Tests (`tests/`, run in CI on Python 3.13 and 3.14) cover the feature code, the frost summary, the helper functions and the committed data; they do not cover the API fetchers or the dashboard. `requirements.txt` is pinned and was installed in a clean Python 3.14 environment.
+What was run: the citrus, county and ranking fetches, the feature step and the coverage probe ran end to end on Python 3.14 / pandas 3.x on 2026-11-03, and the committed data files are their output. Tests (`tests/`, run in CI on Python 3.13 and 3.14) cover the totals rule, the yield cross-check, the feature code, the frost summary, the helper functions and the committed data; they do not cover the API fetchers or the dashboard. `requirements.txt` is pinned and was installed in a clean Python 3.14 environment.
