@@ -2,7 +2,6 @@
 
 import math
 
-import numpy as np
 import pandas as pd
 import pytest
 
@@ -10,7 +9,7 @@ import feature_engineering as fe
 from fetch_county_data import FetchError, parse_acreage_value
 from fetch_data import is_plausible
 from station_coverage import build_matrix
-from stress_indicator import calculate_stress_indicator
+from county_feature_engineering import frost_summary
 
 
 def make_weather(year=2001, stations=("A",), tmax=90.0, tmin=70.0, prcp_in=0.1, bloom_tmin=50.0,
@@ -34,7 +33,7 @@ def make_weather(year=2001, stations=("A",), tmax=90.0, tmin=70.0, prcp_in=0.1, 
 
 
 def features(df, **kwargs):
-    return fe.engineer_weather_features(df, **kwargs).iloc[0]
+    return fe.engineer_weather_features(df, "A", **kwargs).iloc[0]
 
 
 def dates(start, end):
@@ -117,7 +116,7 @@ def test_years_without_data_still_get_a_row_of_na():
 
 def test_availability_report_warns_about_absent_station_years(capsys):
     df = pd.concat([make_weather(2000, ("A", "B")), make_weather(2001, ("A",))])
-    fe.station_availability_report(df)
+    fe.station_availability_report(df, "X")
     assert "B has no observations in [2001]" in capsys.readouterr().out
 
 
@@ -180,15 +179,40 @@ def test_station_coverage_matrix_counts_window_days():
     assert row["grow_tmax_days"] == 124 and row["grow_prcp_days"] == 124
 
 
-# --- stress indicator -----------------------------------------------------------
+# --- frost summary and committed data --------------------------------------------
 
-def test_stress_levels_follow_thresholds():
-    df = pd.DataFrame({
-        "year": range(1990, 2000), "frost_days_bloom": [0] * 9 + [10],
-        "precip_deviation": [0.0] * 9 + [500.0], "gdd_total_grow": [4000.0] * 10,
-        "yield_lbs_acre": [20000.0] * 10,
+def test_frost_summary_counts_only_complete_winters():
+    feats = pd.DataFrame({
+        "county_name": ["P"] * 6,
+        "year": [2000, 2001, 2002, 2003, 2004, 2005],
+        "frost_days_bloom": pd.array([2, pd.NA, 4, 6, pd.NA, 8], dtype="Int64"),
     })
-    out = calculate_stress_indicator(df)
-    assert out["stress_level"].iloc[-1] == "HIGH"
-    assert out["stress_level"].iloc[0] in ("LOW", "MODERATE")
-    assert np.isfinite(out["stress_score"]).all()
+    row = frost_summary(feats).iloc[0]
+    assert row["years_in_range"] == 6 and row["years_counted"] == 4
+    assert (row["first_year_counted"], row["last_year_counted"]) == (2000, 2005)
+    assert row["mean_frost_days"] == pytest.approx(5.0)
+    assert (row["max_frost_days"], row["max_frost_year"]) == (8, 2005)
+    assert row["trend_days_per_decade"] > 0   # rising counts give a positive trend
+
+
+def test_committed_yield_marks_only_the_latest_season_preliminary():
+    df = pd.read_csv("data/nass_yield.csv")
+    assert list(df["year"]) == list(range(df["year"].min(), df["year"].max() + 1))   # no missing years
+    assert df.loc[df["year"] == df["year"].max(), "status"].item() == "preliminary"
+    assert (df.loc[df["year"] < df["year"].max(), "status"] == "reported").all()
+
+
+def test_committed_stations_use_noaa_county_not_the_panel_label():
+    st = pd.read_csv("data/stations.csv").set_index("station_label")
+    assert st.loc["Moore Haven Lock 1", "county_noaa"] == "Glades"
+    assert st.loc["Moore Haven Lock 1", "panel_county"] == "Hendry"
+    assert st[["latitude", "longitude"]].notna().all().all()
+
+
+def test_panel_counties_are_the_four_largest_in_the_2017_census():
+    df = pd.read_csv("data/census_orange_acres_by_county.csv")
+    top = df[(df["year"] == 2017) & (df["status"] == "published")].nlargest(5, "bearing_acres")["county_name"].tolist()
+    assert top[:4] == ["Polk", "Hendry", "De Soto", "Highlands"] and top[4] == "Hardee"
+    # In 2022 Highlands' total is withheld (blank), so it cannot be ranked that year.
+    h22 = df[(df["year"] == 2022) & (df["county_name"] == "Highlands")].iloc[0]
+    assert h22["status"] == "withheld" and pd.isna(h22["bearing_acres"])

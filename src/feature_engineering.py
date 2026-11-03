@@ -1,18 +1,18 @@
 """
-Feature engineering: merge yield and weather data, build the 12 model input features plus the target (log yield).
+Weather features per station and year, from daily NOAA observations.
 
 Missing weather is missing, never zero. Each feature covers a fixed window
-(Jan-Mar bloom, May-Aug growing season). Frost days need every night of the
-bloom window observed. Growing-season features need at least 95% of that
-window's days observed and are computed from the observed days (nothing is
-filled in or scaled up); otherwise they are left blank (NA). The station
-set is fixed: a day counts as observed only if EVERY
-station in the input reported the needed variable that day, so the series
-means the same thing in every year (an earlier version averaged whichever
-stations happened to report, and its membership changed by year). Frost
-counts are strict because a missing night may have been a frost; rolling
-windows only use runs of consecutive observed days. The bloom_days_missing
-and grow_days_missing columns record how many days each window lacked.
+(Jan-Mar bloom season, May-Aug growing season). Frost days need every night of
+the bloom window observed, because a missing night may have been a frost.
+Growing-season features need at least 95% of that window's days observed and
+are computed from the observed days (nothing is filled in or scaled up);
+otherwise they are left blank (NA). If more than one station is passed in, a
+day counts as observed only when every station reported the variable that
+day, so the series means the same thing in every year. The
+bloom_days_missing and grow_days_missing columns record how many days each
+window lacked.
+
+Used by county_feature_engineering.py, which runs it once per county station.
 """
 
 import numpy as np
@@ -21,7 +21,6 @@ from pathlib import Path
 
 Path("data").mkdir(exist_ok=True)
 
-STATEWIDE_LABEL = "Florida (Statewide)"
 ROLLING_WINDOWS = (30, 60, 90)
 MM_PER_INCH = 25.4
 FROST_F = 32      # standard citrus freeze threshold
@@ -31,19 +30,12 @@ GDD_BASE_F = 50   # growing degree day base temperature
 MIN_GROW_COVERAGE = 0.95
 
 
-def load_data():
-    """Load raw NASS and NOAA data."""
-    df_yield = pd.read_csv("data/nass_yield.csv")
-    df_weather = pd.read_csv("data/noaa_weather.csv")
-    return df_yield, df_weather
-
-
-def station_availability_report(df_weather, label=STATEWIDE_LABEL, years=None):
+def station_availability_report(df_weather, label, years=None):
     """Print a warning for every station-year with no observations.
 
-    Under the fixed-station-set rule, a year in which any station reported
-    nothing has no usable features (NA). A single-station input is flagged
-    too, since its series is only as representative as that one station.
+    A year in which a station reported nothing has no usable features (NA).
+    A single-station input is flagged too, since its series is only as
+    representative as that one station.
     """
     w = df_weather.copy()
     w["year"] = pd.to_datetime(w["date"]).dt.year
@@ -58,9 +50,9 @@ def station_availability_report(df_weather, label=STATEWIDE_LABEL, years=None):
             print(f"  [WARN] {label}: {name} has no observations in {gone}; those years' features are NA")
 
 
-def engineer_weather_features(df_weather, label=STATEWIDE_LABEL, years=None):
+def engineer_weather_features(df_weather, label, years=None):
     """
-    One row per year of weather features for one area (statewide or a county).
+    One row per year of weather features for one station (or fixed station set).
 
     Input is long-format daily station data (date, datatype, value) in the
     units NOAA returns with units=standard: TMAX/TMIN in F, PRCP in inches.
@@ -123,79 +115,3 @@ def engineer_weather_features(df_weather, label=STATEWIDE_LABEL, years=None):
     features = pd.DataFrame(rows)
     features["frost_days_bloom"] = features["frost_days_bloom"].astype("Int64")
     return features
-
-
-def merge_and_finalize(df_yield, df_weather_features):
-    """Merge yield and weather, engineer remaining features."""
-
-    # Merge on (county, year)
-    df_model = df_yield.merge(df_weather_features, on=['year', 'county_name'], how='left')
-
-    # Sort by year
-    df_model = df_model.sort_values('year').reset_index(drop=True)
-
-    # Lag-1 yield for carryover effect
-    df_model['yield_lag1'] = df_model['yield_lbs_acre'].shift(1)
-
-    # Precip deviation from the mean over the whole series (years with missing rain are skipped)
-    precip_mean = df_model['precip_total_grow'].mean()
-    df_model['precip_deviation'] = df_model['precip_total_grow'] - precip_mean
-
-    # Year numeric (for trend)
-    df_model['year_numeric'] = df_model['year']
-
-    # Log yield (target transformation for right-skew)
-    df_model['log_yield'] = np.log1p(df_model['yield_lbs_acre'])
-
-    # Select final columns
-    final_columns = [
-        'county_name', 'year', 'yield_lbs_acre',
-        'tmax_mean_grow', 'tmin_mean_grow', 'frost_days_bloom',
-        'precip_total_grow', 'precip_rolling_30', 'precip_rolling_60', 'precip_rolling_90',
-        'temp_variance_grow', 'gdd_total_grow', 'precip_deviation',
-        'yield_lag1', 'year_numeric', 'log_yield',
-        'bloom_days_missing', 'grow_days_missing'
-    ]
-
-    df_model = df_model[final_columns]
-
-    return df_model
-
-
-def main():
-    print("=" * 60)
-    print("FEATURE ENGINEERING")
-    print("=" * 60)
-
-    df_yield, df_weather = load_data()
-    print(f"\n[OK] Loaded yield: {len(df_yield)} records")
-    print(f"[OK] Loaded weather: {len(df_weather)} records")
-
-    station_availability_report(df_weather)
-    df_weather_features = engineer_weather_features(df_weather)
-    print(f"[OK] Engineered weather features: {len(df_weather_features)} records")
-
-    df_model = merge_and_finalize(df_yield, df_weather_features)
-    df_model.to_csv("data/df_model.csv", index=False)
-
-    print(f"[OK] Merged & finalized: {len(df_model)} records")
-    print(f"\n[OK] Saved: data/df_model.csv")
-
-    print("\n" + "=" * 60)
-    print("FINAL MODEL DATA SCHEMA")
-    print("=" * 60)
-    print(f"\nShape: {df_model.shape}")
-    print(f"Columns: {list(df_model.columns)}")
-    print(f"\nData types:\n{df_model.dtypes}")
-    print(f"\nFirst 10 rows:")
-    print(df_model.head(10).to_string(index=False))
-    print(f"\nSummary statistics:")
-    print(df_model.describe().to_string())
-
-    print("\n" + "=" * 60)
-    print("Next: Run src/train_models.py to fit ARIMA and LightGBM")
-    print("=" * 60)
-
-
-if __name__ == "__main__":
-    main()

@@ -34,6 +34,8 @@ Lakeland Linder,2021,90,90,123,123,123
 Lakeland Linder,2022,81,90,118,117,119
 Lakeland Linder,2023,88,90,123,123,123
 Lakeland Linder,2024,91,91,123,123,122
+Lakeland Linder,2025,90,90,123,123,123
+Lakeland Linder,2026,90,90,123,123,123
 Tampa International,1990,90,90,123,123,123
 Tampa International,1991,90,90,123,123,123
 Tampa International,1992,91,91,123,123,123
@@ -69,6 +71,8 @@ Tampa International,2021,90,90,123,123,123
 Tampa International,2022,90,90,123,123,123
 Tampa International,2023,90,90,123,123,123
 Tampa International,2024,91,91,123,123,123
+Tampa International,2025,90,90,123,123,123
+Tampa International,2026,90,90,123,123,123
 Orlando Executive,1990,0,90,0,0,0
 Orlando Executive,1991,0,90,0,0,0
 Orlando Executive,1992,0,91,0,0,0
@@ -104,6 +108,8 @@ Orlando Executive,2021,90,90,123,123,123
 Orlando Executive,2022,90,90,123,123,123
 Orlando Executive,2023,90,90,123,123,123
 Orlando Executive,2024,91,91,123,123,123
+Orlando Executive,2025,90,90,123,123,123
+Orlando Executive,2026,90,90,123,123,123
 Sebring,1990,0,90,0,0,0
 Sebring,1991,0,90,0,0,0
 Sebring,1992,0,91,0,0,0
@@ -139,6 +145,8 @@ Sebring,2021,89,90,123,123,123
 Sebring,2022,89,90,122,122,9
 Sebring,2023,89,90,123,123,123
 Sebring,2024,90,91,123,123,123
+Sebring,2025,89,90,123,123,123
+Sebring,2026,89,90,121,121,121
 La Belle,1990,87,90,94,94,119
 La Belle,1991,63,90,84,84,90
 La Belle,1992,59,91,82,82,110
@@ -174,6 +182,8 @@ La Belle,2021,0,90,0,0,0
 La Belle,2022,0,90,0,0,0
 La Belle,2023,0,90,0,0,0
 La Belle,2024,0,91,0,0,0
+La Belle,2025,0,90,0,0,0
+La Belle,2026,0,90,0,0,0
 Moore Haven Lock 1,1990,90,90,123,123,123
 Moore Haven Lock 1,1991,90,90,123,123,123
 Moore Haven Lock 1,1992,91,91,123,123,123
@@ -209,6 +219,8 @@ Moore Haven Lock 1,2021,48,90,83,83,83
 Moore Haven Lock 1,2022,49,90,108,108,108
 Moore Haven Lock 1,2023,73,90,117,117,117
 Moore Haven Lock 1,2024,89,91,120,120,120
+Moore Haven Lock 1,2025,86,90,119,119,119
+Moore Haven Lock 1,2026,88,90,121,121,122
 Arcadia,1990,90,90,123,123,34
 Arcadia,1991,62,90,121,121,120
 Arcadia,1992,91,91,123,123,102
@@ -244,6 +256,8 @@ Arcadia,2021,90,90,0,0,0
 Arcadia,2022,0,90,0,0,0
 Arcadia,2023,0,90,0,0,0
 Arcadia,2024,0,91,0,0,0
+Arcadia,2025,0,90,0,0,0
+Arcadia,2026,0,90,0,0,0
 Punta Gorda Airport,1990,0,90,0,0,0
 Punta Gorda Airport,1991,0,90,0,0,0
 Punta Gorda Airport,1992,0,91,0,0,0
@@ -279,6 +293,8 @@ Punta Gorda Airport,2021,90,90,123,123,123
 Punta Gorda Airport,2022,90,90,123,123,123
 Punta Gorda Airport,2023,90,90,123,123,123
 Punta Gorda Airport,2024,90,91,123,123,123
+Punta Gorda Airport,2025,90,90,123,123,123
+Punta Gorda Airport,2026,90,90,122,122,118
 Avon Park 2 W,1990,89,90,123,123,123
 Avon Park 2 W,1991,90,90,123,123,123
 Avon Park 2 W,1992,91,91,123,123,123
@@ -314,6 +330,8 @@ Avon Park 2 W,2021,88,90,117,115,77
 Avon Park 2 W,2022,88,90,0,0,0
 Avon Park 2 W,2023,0,90,0,0,0
 Avon Park 2 W,2024,0,91,0,0,0
+Avon Park 2 W,2025,0,90,0,0,0
+Avon Park 2 W,2026,0,90,0,0,0
 Bartow 1 SE,1990,85,90,121,119,123
 Bartow 1 SE,1991,85,90,120,119,121
 Bartow 1 SE,1992,90,91,121,121,123
@@ -349,6 +367,8 @@ Bartow 1 SE,2021,90,90,123,123,114
 Bartow 1 SE,2022,90,90,123,123,123
 Bartow 1 SE,2023,90,90,123,123,123
 Bartow 1 SE,2024,91,91,123,123,123
+Bartow 1 SE,2025,90,90,123,123,123
+Bartow 1 SE,2026,90,90,123,123,123
 Lake Alfred Exp Station,1990,90,90,123,123,123
 Lake Alfred Exp Station,1991,90,90,119,119,121
 Lake Alfred Exp Station,1992,91,91,123,123,123
@@ -384,6 +404,8 @@ Lake Alfred Exp Station,2021,0,90,0,0,0
 Lake Alfred Exp Station,2022,0,90,0,0,0
 Lake Alfred Exp Station,2023,0,90,0,0,0
 Lake Alfred Exp Station,2024,0,91,0,0,0
+Lake Alfred Exp Station,2025,0,90,0,0,0
+Lake Alfred Exp Station,2026,0,90,0,0,0
 Lakeland 2,1990,0,90,0,0,0
 Lakeland 2,1991,0,90,0,0,0
 Lakeland 2,1992,0,91,0,0,0
@@ -419,6 +441,8 @@ Lakeland 2,2021,90,90,123,123,123
 Lakeland 2,2022,90,90,119,118,121
 Lakeland 2,2023,90,90,123,123,123
 Lakeland 2,2024,91,91,123,123,123
+Lakeland 2,2025,90,90,123,123,123
+Lakeland 2,2026,90,90,123,123,123
 Mountain Lake,1990,88,90,118,117,117
 Mountain Lake,1991,88,90,122,122,122
 Mountain Lake,1992,86,91,115,115,123
@@ -454,6 +478,8 @@ Mountain Lake,2021,90,90,123,123,123
 Mountain Lake,2022,90,90,123,123,123
 Mountain Lake,2023,90,90,123,123,123
 Mountain Lake,2024,91,91,123,123,123
+Mountain Lake,2025,90,90,123,123,123
+Mountain Lake,2026,90,90,123,123,123
 Winter Haven (co-op),1990,89,90,123,123,123
 Winter Haven (co-op),1991,90,90,122,122,123
 Winter Haven (co-op),1992,31,91,123,123,123
@@ -489,6 +515,8 @@ Winter Haven (co-op),2021,0,90,0,0,0
 Winter Haven (co-op),2022,0,90,0,0,0
 Winter Haven (co-op),2023,0,90,0,0,0
 Winter Haven (co-op),2024,0,91,0,0,0
+Winter Haven (co-op),2025,0,90,0,0,0
+Winter Haven (co-op),2026,0,90,0,0,0
 Winter Haven Gilbert Airport,1990,0,90,0,0,0
 Winter Haven Gilbert Airport,1991,0,90,0,0,0
 Winter Haven Gilbert Airport,1992,0,91,0,0,0
@@ -524,6 +552,8 @@ Winter Haven Gilbert Airport,2021,90,90,123,123,123
 Winter Haven Gilbert Airport,2022,89,90,121,121,122
 Winter Haven Gilbert Airport,2023,90,90,123,123,123
 Winter Haven Gilbert Airport,2024,91,91,123,123,123
+Winter Haven Gilbert Airport,2025,89,90,121,120,123
+Winter Haven Gilbert Airport,2026,90,90,123,123,123
 Archbold Bio Station,1990,90,90,123,123,123
 Archbold Bio Station,1991,90,90,123,123,123
 Archbold Bio Station,1992,91,91,123,123,123
@@ -559,6 +589,8 @@ Archbold Bio Station,2021,90,90,123,123,123
 Archbold Bio Station,2022,90,90,123,123,123
 Archbold Bio Station,2023,90,90,123,123,123
 Archbold Bio Station,2024,91,91,123,123,123
+Archbold Bio Station,2025,90,90,123,123,123
+Archbold Bio Station,2026,90,90,123,123,123
 Big Cypress,1990,0,90,0,0,0
 Big Cypress,1991,0,90,0,0,0
 Big Cypress,1992,0,91,0,0,0
@@ -594,6 +626,8 @@ Big Cypress,2021,90,90,123,123,123
 Big Cypress,2022,90,90,123,123,123
 Big Cypress,2023,90,90,123,123,123
 Big Cypress,2024,91,91,123,123,123
+Big Cypress,2025,90,90,119,119,119
+Big Cypress,2026,87,90,123,123,123
 Clewiston,1990,90,90,123,123,123
 Clewiston,1991,90,90,123,123,123
 Clewiston,1992,91,91,123,123,123
@@ -629,6 +663,8 @@ Clewiston,2021,0,90,0,0,0
 Clewiston,2022,0,90,0,0,0
 Clewiston,2023,0,90,0,0,0
 Clewiston,2024,0,91,0,0,0
+Clewiston,2025,0,90,0,0,0
+Clewiston,2026,0,90,0,0,0
 Clewiston No. 2,1990,0,90,0,0,0
 Clewiston No. 2,1991,0,90,0,0,0
 Clewiston No. 2,1992,0,91,0,0,0
@@ -664,6 +700,8 @@ Clewiston No. 2,2021,0,90,0,0,0
 Clewiston No. 2,2022,0,90,0,0,0
 Clewiston No. 2,2023,0,90,0,0,0
 Clewiston No. 2,2024,0,91,0,0,0
+Clewiston No. 2,2025,0,90,0,0,0
+Clewiston No. 2,2026,0,90,0,0,0
 Devils Garden,1990,90,90,123,123,123
 Devils Garden,1991,90,90,121,121,121
 Devils Garden,1992,84,91,114,114,121
@@ -699,3 +737,5 @@ Devils Garden,2021,0,90,0,0,123
 Devils Garden,2022,0,90,0,0,123
 Devils Garden,2023,0,90,0,0,123
 Devils Garden,2024,0,91,0,0,123
+Devils Garden,2025,0,90,0,0,123
+Devils Garden,2026,0,90,0,0,123

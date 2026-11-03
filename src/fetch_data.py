@@ -1,10 +1,11 @@
 """
-Fetch Florida orange yield (USDA NASS) and daily weather from two fixed NOAA
-GHCND stations (Tampa, Archbold) for 1990-2024.
+Fetch Florida statewide orange yield from USDA NASS QuickStats, 1990-2026,
+and hold the helpers shared by the other fetch scripts (API client, plausibility
+bounds, key lookup).
 
-If any API call fails, the run stops with an error and writes nothing.
-There is deliberately no fallback to substitute data: a failed fetch must
-never produce files that look like real data.
+If an API call fails, the run stops with an error and writes nothing. There is
+deliberately no fallback to substitute data: a failed fetch must never produce
+files that look like real data.
 """
 
 import os
@@ -16,18 +17,23 @@ import pandas as pd
 import requests
 
 
-START_YEAR, END_YEAR = 1990, 2024
+START_YEAR, END_YEAR = 1990, 2026
+
+# NASS labels a Florida citrus season by its END year: 2023 is the 2022-23
+# season. NASS publishes the season that ends in END_YEAR as a preliminary
+# estimate in August and revises it a year later, so only that last year is
+# marked "preliminary".
+PRELIMINARY_YEARS = {END_YEAR}
 
 # Ensure data directory exists
 Path("data").mkdir(exist_ok=True)
 
 # Physically-motivated sanity bounds for central/south FL daily readings
-# (units=standard: TMAX/TMIN in deg F, PRCP in inches), shared with
-# src/fetch_county_data.py. Florida's all-time record high is 109F (1931).
-# The bounds are deliberately generous so real extremes (freezes,
-# hurricanes) pass through; they only catch single-point sensor or
-# transcription errors seen in the co-op station data (e.g. a 0F or 115F
-# daily high, or a 101F daily low).
+# (units=standard: TMAX/TMIN in deg F, PRCP in inches), used by the county
+# weather fetch. Florida's all-time record high is 109F (1931). The bounds are
+# deliberately generous so real extremes (freezes, hurricanes) pass through;
+# they only catch single-point sensor or transcription errors seen in the
+# co-op station data (e.g. a 0F or 115F daily high, or a 101F daily low).
 TMAX_BOUNDS = (20.0, 110.0)
 TMIN_BOUNDS = (-5.0, 85.0)
 PRCP_BOUNDS = (0.0, 20.0)
@@ -93,12 +99,14 @@ def get_json(url, params, headers=None, attempts=3):
 
 
 def fetch_nass_yield():
-    """Fetch FL statewide orange yield from USDA NASS (1990-2024).
+    """Fetch FL statewide orange yield from USDA NASS (START_YEAR-END_YEAR).
 
-    County-level citrus YIELD/PRODUCTION is not published by NASS (county
-    level only has AREA statistics). Yield is only available at STATE
-    level, reported in BOXES/ACRE, which we convert to LB/ACRE using the
-    standard FL orange box weight (90 lbs/box).
+    QuickStats has no county-level orange yield or production: county rows
+    for oranges and citrus totals cover Census area statistics only. (NASS's
+    Citrus Summary publication does list county production, but those are
+    apportionments of the statewide harvest, not county measurements.) Yield
+    is only available at STATE level, reported in BOXES/ACRE, which we convert
+    to LB/ACRE using the standard FL orange box weight (90 lbs/box).
     """
     print("Fetching USDA NASS Florida orange yield data...")
 
@@ -128,10 +136,12 @@ def fetch_nass_yield():
         if val in ("", "(D)", "(NA)", "(S)", "(Z)"):
             continue
         try:
+            year = int(row.get("year"))
             records.append({
                 "county_name": "Florida (Statewide)",
-                "year": int(row.get("year")),
+                "year": year,
                 "yield_lbs_acre": float(val.replace(",", "")) * FL_ORANGE_BOX_LBS,
+                "status": "preliminary" if year in PRELIMINARY_YEARS else "reported",
                 "data_source": "NASS",
             })
         except (ValueError, TypeError):
@@ -144,114 +154,21 @@ def fetch_nass_yield():
     missing = sorted(set(range(START_YEAR, END_YEAR + 1)) - set(df["year"]))
     if missing:
         raise FetchError(f"NASS yield is missing years: {missing}")
+    if df["year"].duplicated().any():
+        raise FetchError("NASS returned more than one yield row for a year")
 
-    print(f"  [OK] Fetched {len(df)} yield records")
-    return df
-
-
-def fetch_noaa_weather():
-    """Fetch daily TMAX/TMIN/PRCP from NOAA CDO v2 for central Florida stations."""
-    print("Fetching NOAA weather data...")
-
-    # A fixed pair of stations. Of the 20 candidates probed
-    # (src/station_coverage.py, docs/METHODOLOGY.md), only these two report
-    # every year of 1990-2024 with at most a few missing days: Tampa
-    # International (Hillsborough, Gulf coast) and the Archbold Biological
-    # Station (Highlands, south-central). Neither is in the Polk groves, so
-    # the series is a stable regional proxy, not a citrus-belt average. The
-    # earlier four-station set changed membership by year (a single station
-    # in 1996-98, Sebring added in 2008), which made trends in frost and
-    # minimum temperature partly an artifact of which stations reported.
-    stations = {
-        "Tampa International": "USW00012842",
-        "Archbold Biological Station": "USC00080236",
-    }
-
-    url = "https://www.ncei.noaa.gov/cdo-web/api/v2/data"
-    headers = {"token": noaa_token()}
-
-    all_weather = []
-
-    for station_name, station_id in stations.items():
-        print(f"  Fetching {station_name} ({station_id})...")
-        station_count = 0
-        station_rejected = 0
-
-        # CDO v2 requires <1 year per request, so loop year by year
-        for year in range(START_YEAR, END_YEAR + 1):
-            offset = 1
-            while True:
-                params = {
-                    "datasetid": "GHCND",
-                    "stationid": f"GHCND:{station_id}",
-                    "startdate": f"{year}-01-01",
-                    "enddate": f"{year}-12-31",
-                    "datatypeid": "TMAX,TMIN,PRCP",
-                    "units": "standard",
-                    "limit": 1000,
-                    "offset": offset,
-                }
-                data = get_json(url, params, headers=headers)
-
-                # An empty result is legitimate (e.g. Sebring before 2007);
-                # a failed request is not, and raised above.
-                results = data.get("results", [])
-                for record in results:
-                    try:
-                        datatype = record.get("datatype")
-                        value = float(record.get("value"))
-                    except (ValueError, TypeError):
-                        continue
-
-                    if not is_plausible(datatype, value):
-                        station_rejected += 1
-                        continue
-
-                    all_weather.append({
-                        "station_id": station_id,
-                        "station_name": station_name,
-                        "date": record.get("date", "")[:10],
-                        "datatype": datatype,
-                        "value": value,
-                        "data_source": "NOAA",
-                    })
-
-                station_count += len(results)
-                total_count = data.get("metadata", {}).get("resultset", {}).get("count", 0)
-
-                if offset + 1000 > total_count:
-                    break
-                offset += 1000
-                time.sleep(0.2)  # respect rate limit (5 req/sec)
-
-            time.sleep(0.2)
-
-        rejected_note = f", {station_rejected} rejected (implausible)" if station_rejected else ""
-        print(f"    [OK] {station_name}: {station_count - station_rejected} records{rejected_note}")
-
-    if not all_weather:
-        raise FetchError("NOAA returned no weather records")
-
-    df = pd.DataFrame(all_weather)
-
-    years_present = set(pd.to_datetime(df["date"]).dt.year)
-    missing = sorted(set(range(START_YEAR, END_YEAR + 1)) - years_present)
-    if missing:
-        raise FetchError(f"NOAA weather has no data for years: {missing}")
-
-    print(f"  [OK] Total weather records: {len(df)}")
+    print(f"  [OK] Fetched {len(df)} yield records ({START_YEAR}-{END_YEAR}; {END_YEAR} is preliminary)")
     return df
 
 
 def main():
     print("=" * 60)
-    print("CITRUS YIELD FORECASTING - DATA FETCHING")
+    print("CITRUS DATA - STATEWIDE ORANGE YIELD")
     print("=" * 60)
 
-    # Fetch everything first; write only if every fetch succeeded.
+    # Fetch first; write only if the fetch succeeded.
     try:
         df_yield = fetch_nass_yield()
-        df_weather = fetch_noaa_weather()
     except FetchError as e:
         print(f"\n[FAILED] {e}")
         print("Nothing was written; existing data files are unchanged.")
@@ -259,34 +176,13 @@ def main():
 
     df_yield.to_csv("data/nass_yield.csv", index=False)
     print(f"\n[OK] Saved: data/nass_yield.csv")
-    df_weather.to_csv("data/noaa_weather.csv", index=False)
-    print(f"[OK] Saved: data/noaa_weather.csv")
 
-    # Print schemas
-    print("\n" + "=" * 60)
-    print("DATA SCHEMAS")
-    print("=" * 60)
-
-    print("\nYIELD DATA (NASS):")
-    print(f"  Shape: {df_yield.shape}")
-    print(f"  Columns: {list(df_yield.columns)}")
-    print(f"  Year range: {df_yield['year'].min()} - {df_yield['year'].max()}")
-    print(f"  Yield range: {df_yield['yield_lbs_acre'].min():.0f} - {df_yield['yield_lbs_acre'].max():.0f} lbs/acre")
-    print(f"\n  First 5 rows:")
-    print(df_yield.head().to_string(index=False))
-
-    print("\n\nWEATHER DATA (NOAA):")
-    print(f"  Shape: {df_weather.shape}")
-    print(f"  Columns: {list(df_weather.columns)}")
-    print(f"  Date range: {df_weather['date'].min()} - {df_weather['date'].max()}")
-    print(f"  Data types: {df_weather['datatype'].unique().tolist()}")
-    print(f"  Stations: {df_weather['station_name'].nunique()} unique")
-    print(f"\n  First 5 rows:")
-    print(df_weather.head().to_string(index=False))
-
-    print("\n" + "=" * 60)
-    print("Next: Run src/feature_engineering.py to merge & engineer features")
-    print("=" * 60)
+    print("\nRecent years (lb/acre):")
+    print(df_yield.tail(6)[["year", "yield_lbs_acre", "status"]].to_string(index=False))
+    peak = df_yield.loc[df_yield["yield_lbs_acre"].idxmax()]
+    low = df_yield.loc[df_yield["yield_lbs_acre"].idxmin()]
+    print(f"\nPeak {int(peak['year'])}: {peak['yield_lbs_acre']:,.0f}   Low {int(low['year'])}: {low['yield_lbs_acre']:,.0f}   "
+          f"(low is {1 - low['yield_lbs_acre'] / peak['yield_lbs_acre']:.0%} below the peak)")
 
 
 if __name__ == "__main__":

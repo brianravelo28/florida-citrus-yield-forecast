@@ -1,0 +1,5 @@
+station_id,station_label,station_name_noaa,latitude,longitude,noaa_mindate,noaa_maxdate,panel_county,county_noaa
+USC00084802,Lakeland 2,"LAKELAND 2, FL US",27.99437,-82.01378,1995-11-01,2026-09-01,Polk,Polk
+USC00085895,Moore Haven Lock 1,"MOORE HAVEN LOCK 1, FL US",26.84,-81.0872,1918-04-01,2026-10-29,Hendry,Glades
+USC00080228,Arcadia,"ARCADIA, FL US",27.21785,-81.8742,1899-11-01,2021-04-30,DeSoto,DeSoto
+USC00080236,Archbold Biological Station,"ARCHBOLD BIO STATION, FL US",27.18181,-81.35098,1969-01-01,2026-10-14,Highlands,Highlands

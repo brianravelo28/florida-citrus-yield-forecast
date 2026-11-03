@@ -1,41 +1,98 @@
 """
-Plotly Dash app for Florida Citrus Yield Forecasting.
-3 tabs: Overview, Weather Analysis, Scenarios
+Plotly Dash app: Florida orange yield, county acreage and winter frost by
+weather station. Descriptive only; no model, no forecast.
+3 tabs: Overview, Frost Map, County Comparison.
 """
 
 import dash
-from dash import dcc, html, Input, Output, State
+from dash import dcc, html, Input, Output
 import plotly.graph_objects as go
-import plotly.express as px
+from plotly.subplots import make_subplots
 import pandas as pd
-import numpy as np
-from pathlib import Path
 
-# Load data
-df_model = pd.read_csv("data/df_model.csv")
-stress_data = pd.read_csv("results/stress_indicator.csv")
+# ---------------------------------------------------------------------------
+# Data (all committed CSVs; see docs/SCHEMA.md)
+# ---------------------------------------------------------------------------
+yield_df = pd.read_csv("data/nass_yield.csv").sort_values("year").reset_index(drop=True)
 county_features = pd.read_csv("data/county_features.csv")
+stations = pd.read_csv("data/stations.csv")
+frost_summary = pd.read_csv("data/station_frost_summary.csv")
+
 COUNTY_LIST = sorted(county_features["county_name"].unique().tolist())
 COUNTY_YEARS = sorted(county_features["year"].unique().tolist())
-
-# Metrics shown in the Yearly Outlook panel. Years where a county's weather was
-# incomplete are NA ("missing"), not zero. The panel opens on the latest year in
-# which every county has all three metrics, so it doesn't start mostly "missing".
-# One primary NOAA station per county (see src/fetch_county_data.py).
-COUNTY_STATION_NOTE = ("Stations: Polk - Lakeland 2; Hendry - Moore Haven Lock 1 (in neighboring Glades County); DeSoto - Arcadia "
-                       "(records end April 2021); Highlands - Archbold Biological Station, a notably "
-                       "cold site.")
-OUTLOOK_METRICS = ["frost_days_bloom", "tmax_mean_grow", "gdd_total_grow"]
-_n_complete = county_features.groupby("year").apply(
-    lambda g: int(g[OUTLOOK_METRICS].notna().all(axis=1).sum()))
-_complete_years = _n_complete[_n_complete == county_features["county_name"].nunique()]
-DEFAULT_OUTLOOK_YEAR = int(_complete_years.index.max()) if len(_complete_years) else COUNTY_YEARS[-1]
 COUNTY_COLORS = {
     "Polk": "#0d6efd",
     "Hendry": "#198754",
     "DeSoto": "#fd7e14",
     "Highlands": "#6f42c1",
 }
+
+COLORS = {
+    'background': '#f8f9fa',
+    'text': '#212529',
+    'primary': '#0d6efd',
+    'success': '#198754',
+    'warning': '#ffc107',
+    'danger': '#dc3545'
+}
+
+# One row per county: its station, where NOAA lists it, and its frost summary.
+station_info = (
+    stations.rename(columns={"panel_county": "county_name"})
+    .merge(frost_summary, on="county_name", how="left")
+    .set_index("county_name")
+)
+
+# ---------------------------------------------------------------------------
+# Yield story, computed from the data
+# ---------------------------------------------------------------------------
+_peak = yield_df.loc[yield_df["yield_lbs_acre"].idxmax()]
+_low = yield_df.loc[yield_df["yield_lbs_acre"].idxmin()]
+_latest = yield_df.iloc[-1]
+PEAK_YEAR, PEAK_YIELD = int(_peak["year"]), float(_peak["yield_lbs_acre"])
+LOW_YEAR, LOW_YIELD = int(_low["year"]), float(_low["yield_lbs_acre"])
+LATEST_YEAR, LATEST_YIELD = int(_latest["year"]), float(_latest["yield_lbs_acre"])
+LATEST_PRELIM = _latest["status"] == "preliminary"
+FALL_PCT = round((1 - LOW_YIELD / PEAK_YIELD) * 100)
+LATEST_BELOW_PCT = round((1 - LATEST_YIELD / PEAK_YIELD) * 100)
+
+# "Frost stayed flat" is only said if every station's straight-line trend is
+# within one frost day per decade; otherwise the headline says it varied.
+FROST_FLAT = bool((frost_summary["trend_days_per_decade"].abs() < 1).all())
+FROST_CLAUSE = ("winter frost at the stations measured stayed flat" if FROST_FLAT
+                else "winter frost at the stations measured varied from station to station")
+
+if LATEST_YEAR > LOW_YEAR and LATEST_YIELD > LOW_YIELD:
+    HEADLINE = (
+        f"Florida's orange yield fell {FALL_PCT}% from its {PEAK_YEAR} peak to its {LOW_YEAR} low and has "
+        f"recovered only partly ({LATEST_YEAR}"
+        + (" preliminary" if LATEST_PRELIM else "")
+        + f": {LATEST_BELOW_PCT}% below the peak), while {FROST_CLAUSE}."
+    )
+else:
+    HEADLINE = (f"Florida's orange yield fell {FALL_PCT}% from its {PEAK_YEAR} peak to {LOW_YEAR}, "
+                f"while {FROST_CLAUSE}.")
+
+# ---------------------------------------------------------------------------
+# County panel pieces
+# ---------------------------------------------------------------------------
+# Metrics shown in the Yearly Outlook panel. Years where a county's station was
+# missing too many days are NA ("missing"), not zero. The panel opens on the
+# latest year in which every county has all three metrics.
+OUTLOOK_METRICS = ["frost_days_bloom", "tmax_mean_grow", "gdd_total_grow"]
+_n_complete = county_features.groupby("year").apply(
+    lambda g: int(g[OUTLOOK_METRICS].notna().all(axis=1).sum()), include_groups=False)
+_complete_years = _n_complete[_n_complete == county_features["county_name"].nunique()]
+DEFAULT_OUTLOOK_YEAR = int(_complete_years.index.max()) if len(_complete_years) else COUNTY_YEARS[-1]
+
+
+def _station_phrase(county):
+    row = station_info.loc[county]
+    where = "" if row["county_noaa"] == county else f" (NOAA lists it in {row['county_noaa']} County)"
+    return f"{county} - {row['station_label']}{where}"
+
+
+STATION_NOTE = "Stations (one per county): " + "; ".join(_station_phrase(c) for c in COUNTY_LIST) + "."
 
 
 def _join_years(years):
@@ -57,23 +114,7 @@ ACREAGE_NOTE = (
     )
 )
 
-# Load model results
-import json
-with open("results/model_results.json", "r") as f:
-    model_results = json.load(f)
-
-# Initialize Dash app
 app = dash.Dash(__name__)
-
-# Define styles
-COLORS = {
-    'background': '#f8f9fa',
-    'text': '#212529',
-    'primary': '#0d6efd',
-    'success': '#198754',
-    'warning': '#ffc107',
-    'danger': '#dc3545'
-}
 
 KPI_STYLE = {
     'textAlign': 'center',
@@ -83,6 +124,8 @@ KPI_STYLE = {
     'boxShadow': '0 1px 3px rgba(0,0,0,0.1)',
     'margin': '10px'
 }
+CARD_STYLE = {'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}
+FOOTNOTE_STYLE = {'fontSize': '12px', 'color': '#888', 'marginTop': '10px'}
 
 
 def create_kpi_card(label, value, unit="", color=COLORS['primary']):
@@ -100,156 +143,162 @@ CHART_HINT_LEGEND = " Click a legend entry to hide that series; double-click it 
 
 
 def chart_hint(legend=True):
-    """Small caption under a chart explaining zoom/legend interactions.
-
-    legend=False for single-trace charts (e.g. feature importance, the
-    scenario bar chart) that don't show a legend.
-    """
+    """Small caption under a chart explaining zoom/legend interactions."""
     text = CHART_HINT_ZOOM + (CHART_HINT_LEGEND if legend else "")
     return html.P(text, style={'margin': '4px 2px 0', 'color': '#888', 'fontSize': '13px', 'fontStyle': 'italic'})
 
 
-# Overview KPI values, computed from the data (statewide orange yield).
-_latest = df_model.iloc[-1]
-LATEST_YEAR = int(_latest['year'])
-LATEST_YIELD = float(_latest['yield_lbs_acre'])
-_last5 = df_model.tail(5)
-LAST5_AVG = float(_last5['yield_lbs_acre'].mean())
-LAST5_RANGE = f"{int(_last5['year'].min())}-{int(_last5['year'].max())}"
-_peak = df_model.loc[df_model['yield_lbs_acre'].idxmax()]
-PEAK_YEAR = int(_peak['year'])
-PEAK_YIELD = float(_peak['yield_lbs_acre'])
-LATEST_STRESS = stress_data.loc[stress_data['year'] == LATEST_YEAR, 'stress_level'].iloc[0]
-STRESS_COLORS = {'HIGH': COLORS['danger'], 'MODERATE': COLORS['warning'], 'LOW': COLORS['success']}
+# ---------------------------------------------------------------------------
+# Static figures (do not depend on any input)
+# ---------------------------------------------------------------------------
+def build_yield_figure():
+    """Statewide yield; the preliminary point is drawn hollow and joined with a dashed line."""
+    reported = yield_df[yield_df["status"] != "preliminary"]
+    prelim = yield_df[yield_df["status"] == "preliminary"]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=reported["year"], y=reported["yield_lbs_acre"], mode="lines+markers", name="NASS reported",
+        line=dict(color=COLORS['primary'], width=2), marker=dict(size=6),
+        hovertemplate="<b>%{x}</b><br>%{y:,.0f} lb/acre<extra></extra>"))
+    if len(prelim) and len(reported):
+        join = pd.concat([reported.tail(1), prelim])
+        fig.add_trace(go.Scatter(
+            x=join["year"], y=join["yield_lbs_acre"], mode="lines+markers", name="Preliminary (NASS, August)",
+            line=dict(color=COLORS['primary'], width=2, dash="dash"),
+            marker=dict(size=[0, 11], symbol="circle-open", line=dict(width=2)),
+            hovertemplate="<b>%{x} (preliminary)</b><br>%{y:,.0f} lb/acre<extra></extra>"))
+    fig.add_annotation(x=PEAK_YEAR, y=PEAK_YIELD, text=f"{PEAK_YEAR} peak", showarrow=True, ay=-30)
+    fig.add_annotation(x=LOW_YEAR, y=LOW_YIELD, text=f"{LOW_YEAR} low (-{FALL_PCT}%)", showarrow=True, ay=40)
+    fig.update_layout(
+        title="Florida Orange Yield (statewide)", xaxis_title="Season (NASS labels a season by its end year)",
+        yaxis_title="Yield (lb/acre)", height=480, template="plotly_white", hovermode="x unified")
+    return fig
 
 
-def get_current_year_data():
-    """Get latest year data."""
-    latest = df_model.iloc[-1]
-    return latest
+def build_map_figure():
+    """One marker per weather station, sized and colored by mean bloom-season frost days."""
+    df = station_info.reset_index()
+    hover = []
+    for _, r in df.iterrows():
+        hover.append(
+            f"<b>{r['station_label']}</b><br>NOAA county: {r['county_noaa']}"
+            f"<br>Used for the {r['county_name']} panel"
+            f"<br>Winters counted: {int(r['years_counted'])} of {int(r['years_in_range'])} "
+            f"({int(r['first_year_counted'])}-{int(r['last_year_counted'])})"
+            f"<br>Mean frost days a year: {r['mean_frost_days']:.1f}"
+            f"<br>Most: {int(r['max_frost_days'])} ({int(r['max_frost_year'])})"
+            f"<br>Trend: {r['trend_days_per_decade']:+.1f} days per decade")
+    fig = go.Figure(go.Scattermap(
+        lat=df["latitude"], lon=df["longitude"], mode="markers+text",
+        text=df["station_label"], textposition="top right",
+        marker=dict(size=14 + df["mean_frost_days"] * 3, color=df["mean_frost_days"], colorscale="YlGnBu",
+                    cmin=0, showscale=True, opacity=0.85,
+                    colorbar=dict(title="Mean frost<br>days a year")),
+        hovertext=hover, hoverinfo="text"))
+    fig.update_layout(
+        map=dict(style="open-street-map", center=dict(lat=float(df["latitude"].mean()), lon=float(df["longitude"].mean())), zoom=6.6),
+        margin=dict(l=0, r=0, t=10, b=0), height=520)
+    return fig
 
 
-# ============================================
-# APP LAYOUT
-# ============================================
+def build_station_table():
+    df = station_info.reset_index()
+    head = ["Station", "NOAA county", "Panel county", "Winters counted", "First-last counted",
+            "Mean frost days", "Most (year)", "Trend per decade"]
+    cell = {'padding': '6px 10px', 'borderBottom': '1px solid #eee', 'textAlign': 'left', 'fontSize': '13px'}
+    rows = [html.Tr([html.Th(h, style={**cell, 'fontWeight': 'bold'}) for h in head])]
+    for _, r in df.iterrows():
+        vals = [r["station_label"], r["county_noaa"], r["county_name"],
+                f"{int(r['years_counted'])} of {int(r['years_in_range'])}",
+                f"{int(r['first_year_counted'])}-{int(r['last_year_counted'])}",
+                f"{r['mean_frost_days']:.1f}", f"{int(r['max_frost_days'])} ({int(r['max_frost_year'])})",
+                f"{r['trend_days_per_decade']:+.1f}"]
+        rows.append(html.Tr([html.Td(v, style=cell) for v in vals]))
+    return html.Table(rows, style={'borderCollapse': 'collapse', 'width': '100%'})
 
+
+# ---------------------------------------------------------------------------
+# Layout
+# ---------------------------------------------------------------------------
 app.layout = html.Div([
     html.Div([
-        html.H1("Florida Citrus Yield Forecasting System", style={
-            'color': COLORS['primary'],
-            'marginBottom': '10px',
-            'fontSize': '32px',
-            'fontWeight': 'bold'
-        }),
-        html.P("Data-driven yield predictions using USDA NASS + NOAA weather + ML",
-               style={'color': '#666', 'marginTop': '0'})
+        html.H1("Florida Orange Yield, Acreage and Winter Frost", style={
+            'color': COLORS['primary'], 'marginBottom': '10px', 'fontSize': '32px', 'fontWeight': 'bold'}),
+        html.P("What happened to Florida's orange yield and acreage, and does winter frost explain it?",
+               style={'color': '#333', 'margin': '0 0 6px', 'fontSize': '16px'}),
+        html.P("For anyone following the decline of Florida's orange industry, including analysts and students. "
+               "Real USDA NASS and NOAA data; descriptive only, with no model or forecast.",
+               style={'color': '#666', 'marginTop': '0', 'fontSize': '14px'})
     ], style={'padding': '30px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderBottom': '2px solid #e0e0e0'}),
 
     dcc.Tabs(id="tabs", value="tab-1", children=[
 
-        # ============================================
-        # TAB 1: OVERVIEW
-        # ============================================
+        # ----- TAB 1: OVERVIEW -----
         dcc.Tab(label="Overview", value="tab-1", children=[
             html.Div([
                 html.Div([
-                    html.H3(f"Latest Status ({LATEST_YEAR}) - Florida Statewide Oranges", style={'marginBottom': '8px'}),
-                    html.P(html.I("Yield is published only statewide. Florida oranges are grown mostly in the central and "
-                                  "southern citrus belt, and the weather inputs come from two NOAA stations in that "
-                                  "region (Tampa and Archbold), a regional proxy rather than a statewide measurement."),
-                           style={'fontSize': '12px', 'color': '#888', 'marginBottom': '20px'}),
+                    html.H3(HEADLINE, style={'marginBottom': '8px', 'lineHeight': '1.4'}),
+                    html.P(html.I(
+                        f"The {FALL_PCT}% is measured from the {PEAK_YEAR} peak. Yield is published only statewide, "
+                        "so the yield chart is statewide; county panels cover Census acreage and weather from one "
+                        "station per county. Winter frost means days at or below 32 F in January-March, per station."),
+                        style={'fontSize': '12px', 'color': '#888', 'marginBottom': '20px'}),
                     html.Div([
-                        create_kpi_card(f"Latest Yield ({LATEST_YEAR})", LATEST_YIELD, "lbs/acre", COLORS['primary']),
-                        create_kpi_card(f"5-Year Avg ({LAST5_RANGE})", LAST5_AVG, "lbs/acre", COLORS['success']),
-                        create_kpi_card(f"Peak Yield ({PEAK_YEAR})", PEAK_YIELD, "lbs/acre", COLORS['warning']),
-                        create_kpi_card(f"Stress Level ({LATEST_YEAR})", LATEST_STRESS, "", STRESS_COLORS[LATEST_STRESS])
+                        create_kpi_card(f"Peak ({PEAK_YEAR})", PEAK_YIELD, "lb/acre", COLORS['warning']),
+                        create_kpi_card(f"Low ({LOW_YEAR})", LOW_YIELD, f"lb/acre, {FALL_PCT}% below the peak", COLORS['danger']),
+                        create_kpi_card(f"Latest ({LATEST_YEAR}{', preliminary' if LATEST_PRELIM else ''})", LATEST_YIELD,
+                                        f"lb/acre, {LATEST_BELOW_PCT}% below the peak", COLORS['primary']),
                     ], style={'display': 'flex', 'flexWrap': 'wrap', 'justifyContent': 'space-around'})
-                ], style={'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}),
+                ], style=CARD_STYLE),
 
                 html.Div([
-                    html.H3("Historical Yield & 2023-24 Model Predictions (1990-2024)", style={'marginBottom': '20px'}),
-                    dcc.Graph(id='yield-forecast-chart'),
-                    chart_hint()
-                ], style={'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}),
-
-                html.Div([
-                    html.H3("Stress Index Timeline", style={'marginBottom': '20px'}),
-                    dcc.Graph(id='stress-timeline-chart'),
-                    chart_hint()
-                ], style={'padding': '20px', 'backgroundColor': 'white', 'borderRadius': '8px'})
-
+                    dcc.Graph(figure=build_yield_figure()),
+                    chart_hint(),
+                    html.P(
+                        "NASS publishes the most recent season as a preliminary estimate each August and revises it "
+                        "a year later. Seasons are labeled by their end year (2023 is the 2022-23 season). "
+                        "Frost is not drawn on this chart because frost years are calendar years, not seasons.",
+                        style=FOOTNOTE_STYLE)
+                ], style=CARD_STYLE),
             ], style={'padding': '20px'})
         ]),
 
-        # ============================================
-        # TAB 2: WEATHER ANALYSIS
-        # ============================================
-        dcc.Tab(label="Weather Analysis", value="tab-2", children=[
+        # ----- TAB 2: FROST MAP -----
+        dcc.Tab(label="Frost Map", value="tab-2", children=[
             html.Div([
                 html.Div([
-                    html.H3("Weather Components (Growing Season)", style={'marginBottom': '20px'}),
-                    dcc.Graph(id='weather-components-chart'),
-                    chart_hint()
-                ], style={'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}),
+                    html.H3("Bloom-Season Frost Days by Weather Station (Jan-Mar)", style={'marginBottom': '8px'}),
+                    html.P(html.I(
+                        "Each marker is a NOAA weather station, not a county. Color and size show the mean number of "
+                        "days a year at or below 32 F in January-March. Only winters with every night observed are "
+                        "counted, so stations have different numbers of counted years: compare averages with that in mind."),
+                        style={'fontSize': '12px', 'color': '#888', 'marginBottom': '15px'}),
+                    dcc.Graph(figure=build_map_figure()),
+                    html.P("Drag to move the map; scroll to zoom. Hover a marker for the station's details.",
+                           style={'margin': '4px 2px 0', 'color': '#888', 'fontSize': '13px', 'fontStyle': 'italic'}),
+                ], style=CARD_STYLE),
 
                 html.Div([
-                    html.H3("Feature Importance (Top 10)", style={'marginBottom': '20px'}),
-                    dcc.Graph(id='feature-importance-chart'),
-                    chart_hint(legend=False)
-                ], style={'padding': '20px', 'backgroundColor': 'white', 'borderRadius': '8px'})
-
+                    html.H3("Station summary", style={'marginBottom': '12px'}),
+                    build_station_table(),
+                    html.P(STATION_NOTE + " Archbold is a notably cold site (open scrub), so its frost "
+                           "counts are not representative of nearby groves.", style=FOOTNOTE_STYLE),
+                ], style=CARD_STYLE),
             ], style={'padding': '20px'})
         ]),
 
-        # ============================================
-        # TAB 3: SCENARIOS
-        # ============================================
-        dcc.Tab(label="Scenarios", value="tab-3", children=[
-            html.Div([
-                html.Div([
-                    html.H3("Climate Stress Scenario Analysis", style={'marginBottom': '20px'}),
-                    html.Div([
-                        html.Label("Frost Days Increase:", style={'fontWeight': 'bold', 'marginTop': '20px'}),
-                        dcc.Slider(
-                            id='frost-slider',
-                            min=0,
-                            max=50,
-                            step=5,
-                            value=0,
-                            marks={i: f'{i}%' for i in range(0, 51, 10)},
-                            tooltip={"placement": "bottom", "always_visible": True}
-                        ),
-                    ], style={'padding': '20px', 'backgroundColor': '#f8f9fa', 'borderRadius': '8px', 'marginBottom': '20px'}),
-
-                    dcc.Graph(id='scenario-chart'),
-                    chart_hint(legend=False)
-
-                ], style={'padding': '20px', 'backgroundColor': 'white', 'borderRadius': '8px'}),
-
-                html.Div([
-                    html.H3("Economic Impact", id='economic-title', style={'marginBottom': '20px'}),
-                    html.Div(id='economic-text', style={'fontSize': '16px', 'lineHeight': '1.8'})
-                ], style={'padding': '20px', 'backgroundColor': 'white', 'marginTop': '20px', 'borderRadius': '8px'})
-
-            ], style={'padding': '20px'})
-        ]),
-
-        # ============================================
-        # TAB 4: COUNTY COMPARISON
-        # ============================================
-        dcc.Tab(label="County Comparison", value="tab-4", children=[
+        # ----- TAB 3: COUNTY COMPARISON -----
+        dcc.Tab(label="County Comparison", value="tab-3", children=[
             html.Div([
                 html.Div([
                     html.P([
                         html.Strong("Note: "),
-                        "USDA NASS does not publish county-level citrus yield or production "
-                        "(checked for oranges and citrus totals, in both the survey and Census of "
-                        "Agriculture programs). "
-                        "The panel below shows what IS real and county-specific: weather from one NOAA "
-                        "station per county (the station, not the whole county) and Census "
-                        "bearing-acreage figures for four large Florida orange-producing "
-                        "counties. No yield number is estimated or fabricated for any county, and "
-                        "acreage totals USDA withheld are shown as gaps, not estimated."
+                        "USDA QuickStats has no county-level orange yield or production (checked for oranges and "
+                        "citrus totals, in the survey and Census programs). NASS's Citrus Summary lists county "
+                        "production, but as an apportionment of the statewide harvest, not a county measurement, so "
+                        "no county yield is shown or estimated here. The panel shows Census bearing acreage and "
+                        "weather from one NOAA station per county (the station, not the whole county). "
+                        "Acreage totals USDA withheld are shown as gaps."
                     ], style={'fontSize': '13px', 'color': '#666', 'backgroundColor': '#fff9db',
                               'padding': '15px', 'borderRadius': '8px', 'borderLeft': '4px solid ' + COLORS['warning']})
                 ], style={'marginBottom': '20px'}),
@@ -259,33 +308,24 @@ app.layout = html.Div([
                     dcc.Checklist(
                         id='county-checklist',
                         options=[{'label': f' {c}', 'value': c} for c in COUNTY_LIST],
-                        value=COUNTY_LIST,
-                        inline=True,
-                        style={'display': 'inline-block'}
-                    )
+                        value=COUNTY_LIST, inline=True, style={'display': 'inline-block'})
                 ], style={'padding': '15px 20px', 'backgroundColor': 'white', 'borderRadius': '8px', 'marginBottom': '20px'}),
 
                 html.Div([
-                    html.H3("Frost Days During Bloom (Jan-Mar), by County", style={'marginBottom': '20px'}),
+                    html.H3("Frost Days During Bloom (Jan-Mar), by Station", style={'marginBottom': '20px'}),
                     dcc.Graph(id='county-frost-chart'),
                     chart_hint(),
-                    html.P(
-                        html.I(COUNTY_STATION_NOTE + " Breaks in a line are years when the station "
-                               "was missing some January-March nights, or had no record: shown as "
-                               "missing, not as zero."),
-                        style={'fontSize': '12px', 'color': '#888', 'marginTop': '10px'}
-                    )
-                ], style={'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}),
+                    html.P(html.I(STATION_NOTE + " The legend shows how many winters each station has counted. "
+                                  "Breaks in a line are years when the station was missing some January-March "
+                                  "nights, or had no record: shown as missing, not as zero."), style=FOOTNOTE_STYLE)
+                ], style=CARD_STYLE),
 
                 html.Div([
-                    html.H3("Bearing Acreage Trend (real USDA Census years)", style={'marginBottom': '20px'}),
+                    html.H3("Bearing Acreage Trend (USDA Census years)", style={'marginBottom': '20px'}),
                     dcc.Graph(id='county-acreage-chart'),
                     chart_hint(),
-                    html.P(
-                        ACREAGE_NOTE,
-                        style={'fontSize': '12px', 'color': '#888', 'marginTop': '10px'}
-                    )
-                ], style={'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}),
+                    html.P(ACREAGE_NOTE, style=FOOTNOTE_STYLE)
+                ], style=CARD_STYLE),
 
                 html.Div([
                     html.H3("Yearly Outlook", style={'marginBottom': '20px'}),
@@ -294,11 +334,8 @@ app.layout = html.Div([
                         dcc.Dropdown(
                             id='county-year-dropdown',
                             options=[{'label': str(y), 'value': y} for y in COUNTY_YEARS],
-                            value=DEFAULT_OUTLOOK_YEAR,
-                            clearable=False,
-                            searchable=False,
-                            style={'width': '150px', 'display': 'inline-block', 'verticalAlign': 'middle'}
-                        ),
+                            value=DEFAULT_OUTLOOK_YEAR, clearable=False, searchable=False,
+                            style={'width': '150px', 'display': 'inline-block', 'verticalAlign': 'middle'}),
                         html.I(f"Opens on {DEFAULT_OUTLOOK_YEAR}, the latest year with complete data for every "
                                "county; incomplete values show as missing.",
                                style={'fontSize': '12px', 'color': '#888', 'marginLeft': '15px'})
@@ -313,246 +350,12 @@ app.layout = html.Div([
 ], style={'backgroundColor': COLORS['background'], 'minHeight': '100vh', 'fontFamily': 'Arial, sans-serif'})
 
 
-# ============================================
-# CALLBACKS
-# ============================================
-
-@app.callback(
-    Output('yield-forecast-chart', 'figure'),
-    Input('tabs', 'value')
-)
-def update_yield_forecast(tab):
-    """Historical yield with ARIMA and LightGBM predictions for the 2023-24 holdout."""
-    fig = go.Figure()
-
-    # Historical data
-    fig.add_trace(go.Scatter(
-        x=df_model['year'],
-        y=df_model['yield_lbs_acre'],
-        mode='lines+markers',
-        name='Historical Yield',
-        line=dict(color=COLORS['primary'], width=2),
-        marker=dict(size=6)
-    ))
-
-    # ARIMA forecast
-    if model_results['arima']:
-        forecast_years = [2023, 2024]
-        arima_values = [model_results['arima']['forecast_2023'], model_results['arima']['forecast_2024']]
-        fig.add_trace(go.Scatter(
-            x=forecast_years,
-            y=arima_values,
-            mode='lines+markers',
-            name='ARIMA (2023-24 holdout)',
-            line=dict(color=COLORS['warning'], width=2, dash='dash'),
-            marker=dict(size=8)
-        ))
-
-    # LightGBM forecast
-    if model_results['lightgbm']:
-        forecast_years = [2023, 2024]
-        lgb_values = [model_results['lightgbm']['forecast_2023'], model_results['lightgbm']['forecast_2024']]
-        fig.add_trace(go.Scatter(
-            x=forecast_years,
-            y=lgb_values,
-            mode='lines+markers',
-            name='LightGBM (2023-24 holdout)',
-            line=dict(color=COLORS['success'], width=2, dash='dash'),
-            marker=dict(size=8)
-        ))
-
-    fig.update_layout(
-        title="Florida Orange Yield: Actual vs. Holdout Predictions",
-        xaxis_title="Year",
-        yaxis_title="Yield (lbs/acre)",
-        hovermode='x unified',
-        height=500,
-        template='plotly_white'
-    )
-    return fig
-
-
-@app.callback(
-    Output('stress-timeline-chart', 'figure'),
-    Input('tabs', 'value')
-)
-def update_stress_timeline(tab):
-    """Stress level timeline."""
-    fig = go.Figure()
-
-    colors = {'LOW': COLORS['success'], 'MODERATE': COLORS['warning'], 'HIGH': COLORS['danger']}
-
-    for level in ['HIGH', 'MODERATE', 'LOW']:
-        data = stress_data[stress_data['stress_level'] == level]
-        fig.add_trace(go.Scatter(
-            x=data['year'],
-            y=data['stress_score'],
-            mode='markers',
-            name=f'{level} Stress',
-            marker=dict(size=10, color=colors[level]),
-            text=data['stress_level'],
-            hovertemplate='<b>%{x}</b><br>Stress Score: %{y:.2f}<extra></extra>'
-        ))
-
-    fig.update_layout(
-        title="Climate Stress Index Over Time",
-        xaxis_title="Year",
-        yaxis_title="Stress Score",
-        hovermode='x unified',
-        height=400,
-        template='plotly_white'
-    )
-    return fig
-
-
-@app.callback(
-    Output('weather-components-chart', 'figure'),
-    Input('tabs', 'value')
-)
-def update_weather_components(tab):
-    """Weather components over time."""
-    fig = make_subplots(
-        rows=3, cols=1,
-        subplot_titles=("Temperature (°F)", "Precipitation (mm)", "Frost Days During Bloom (Jan-Mar)")
-    )
-
-    # Temperature
-    fig.add_trace(go.Scatter(
-        x=df_model['year'], y=df_model['tmax_mean_grow'],
-        name='Max Temp', line=dict(color='red'), mode='lines'
-    ), row=1, col=1)
-    fig.add_trace(go.Scatter(
-        x=df_model['year'], y=df_model['tmin_mean_grow'],
-        name='Min Temp', line=dict(color='blue'), mode='lines'
-    ), row=1, col=1)
-
-    # Precipitation
-    fig.add_trace(go.Bar(
-        x=df_model['year'], y=df_model['precip_total_grow'],
-        name='Precip', marker=dict(color='green'), showlegend=False
-    ), row=2, col=1)
-
-    # Frost days
-    fig.add_trace(go.Bar(
-        x=df_model['year'], y=df_model['frost_days_bloom'],
-        name='Frost Days', marker=dict(color='purple'), showlegend=False
-    ), row=3, col=1)
-
-    fig.update_yaxes(title_text="Temp (F)", row=1, col=1)
-    fig.update_yaxes(title_text="Precip (mm)", row=2, col=1)
-    fig.update_yaxes(title_text="Days", row=3, col=1)
-    fig.update_xaxes(title_text="Year", row=3, col=1)
-
-    fig.update_layout(height=900, template='plotly_white', hovermode='x unified')
-    return fig
-
-
-@app.callback(
-    Output('feature-importance-chart', 'figure'),
-    Input('tabs', 'value')
-)
-def update_feature_importance(tab):
-    """Feature importance from LightGBM."""
-    if not model_results['lightgbm']:
-        return go.Figure()
-
-    imp_dict = model_results['lightgbm']['feature_importance']
-    sorted_features = sorted(imp_dict.items(), key=lambda x: x[1], reverse=True)[:10]
-
-    features, importances = zip(*sorted_features)
-
-    fig = go.Figure(data=[
-        go.Bar(x=list(importances), y=list(features), orientation='h', marker=dict(color=COLORS['primary']))
-    ])
-
-    fig.update_layout(
-        title="Top 10 Features (LightGBM Importance)",
-        xaxis_title="Importance",
-        yaxis_title="Feature",
-        height=400,
-        template='plotly_white'
-    )
-    return fig
-
-
-@app.callback(
-    [Output('scenario-chart', 'figure'),
-     Output('economic-text', 'children')],
-    Input('frost-slider', 'value')
-)
-def update_scenario(frost_increase_pct):
-    """Scenario analysis: frost day increase impact."""
-    latest = df_model.iloc[-1]
-    baseline_yield = latest['yield_lbs_acre']
-
-    # Scale the slider off the 35-year historical AVERAGE frost days, not
-    # the single latest year. The latest year (and 11 of the 35 years) has 0
-    # frost days, which made "+X%" multiply against zero and produce no
-    # visible change at any slider position. The historical average gives a
-    # stable, always-nonzero reference for a "% worse than typical" scenario.
-    historical_avg_frost = df_model['frost_days_bloom'].mean()
-
-    # Simple model: each additional frost day reduces yield by ~2000 lbs/acre
-    frost_increase = historical_avg_frost * (frost_increase_pct / 100)
-    yield_loss = frost_increase * 2000
-
-    scenario_yield = max(baseline_yield - yield_loss, 5000)
-
-    # Economic impact (@$0.45/lb)
-    commodity_price = 0.45
-    baseline_revenue = baseline_yield * commodity_price
-    scenario_revenue = scenario_yield * commodity_price
-    revenue_loss = baseline_revenue - scenario_revenue
-
-    acres_polk = 50000  # Approximate Polk County citrus acres
-    total_loss = revenue_loss * acres_polk
-
-    # Chart
-    fig = go.Figure(data=[
-        go.Bar(
-            x=['Baseline', f'Scenario (+{frost_increase_pct}% Frost)'],
-            y=[baseline_yield, scenario_yield],
-            marker=dict(color=[COLORS['success'], COLORS['danger']]),
-            text=[f'{baseline_yield:,.0f}', f'{scenario_yield:,.0f}'],
-            textposition='auto'
-        )
-    ])
-
-    fig.update_layout(
-        title="Yield Impact of Increased Frost Days",
-        yaxis_title="Yield (lbs/acre)",
-        height=400,
-        template='plotly_white',
-        showlegend=False
-    )
-
-    # Economic text
-    economic_text = html.Div([
-        html.P(f"Scenario: +{frost_increase_pct}% frost days vs. the 1990-2024 average ({historical_avg_frost:.2f} days/year)"),
-        html.P(f"Estimated frost day increase: +{frost_increase:.1f} days"),
-        html.Hr(),
-        html.P([
-            html.Strong("Per-acre impact:"),
-            html.Br(),
-            f"Baseline yield: {baseline_yield:,.0f} lbs/acre",
-            html.Br(),
-            f"Scenario yield: {scenario_yield:,.0f} lbs/acre",
-            html.Br(),
-            f"Yield loss: {baseline_yield - scenario_yield:,.0f} lbs/acre"
-        ]),
-        html.Hr(),
-        html.P([
-            html.Strong("Illustrative impact (50,000 acres):"),
-            html.Br(),
-            f"Baseline revenue: ${baseline_revenue * acres_polk:,.0f}",
-            html.Br(),
-            f"Scenario revenue: ${scenario_revenue * acres_polk:,.0f}",
-            html.Br(),
-            html.Strong(f"Projected loss: ${total_loss:,.0f}", style={'color': COLORS['danger']})
-        ])
-    ])
-
-    return fig, economic_text
+# ---------------------------------------------------------------------------
+# Callbacks (County Comparison tab)
+# ---------------------------------------------------------------------------
+def _legend_name(county):
+    r = station_info.loc[county]
+    return f"{county} - {r['station_label']} ({int(r['years_counted'])} of {int(r['years_in_range'])} winters)"
 
 
 @app.callback(
@@ -560,39 +363,30 @@ def update_scenario(frost_increase_pct):
     Input('county-checklist', 'value')
 )
 def update_county_frost(selected_counties):
-    """Frost days by bloom season, one line per selected county."""
+    """Frost days by bloom season, one line per selected station."""
     fig = go.Figure()
 
     for county in selected_counties:
         sub = county_features[county_features['county_name'] == county].sort_values('year')
         fig.add_trace(go.Scatter(
-            x=sub['year'],
-            y=sub['frost_days_bloom'],
-            mode='lines+markers',
-            name=county,
-            line=dict(color=COUNTY_COLORS.get(county), width=2),
-            marker=dict(size=5)
+            x=sub['year'], y=sub['frost_days_bloom'], mode='lines+markers', name=_legend_name(county),
+            line=dict(color=COUNTY_COLORS.get(county), width=2), marker=dict(size=5)
         ))
 
-    # Say which counties have no 2010 value instead of implying all were measured.
+    # Say which stations have no 2010 value instead of implying all were measured.
     in_2010 = county_features[county_features['year'] == 2010]
     no_2010 = sorted(in_2010.loc[in_2010['frost_days_bloom'].isna(), 'county_name'])
     freeze_note = (f"({', '.join(no_2010)}: 2010 record incomplete)" if no_2010
-                   else "(all counties recorded frost)")
+                   else "(all stations recorded frost)")
     fig.add_annotation(
         x=2010, y=in_2010['frost_days_bloom'].max(),
         text=f"Jan 2010 FL freeze<br>{freeze_note}",
-        showarrow=True, arrowhead=2, ax=40, ay=-40,
-        font=dict(size=11, color='#666')
-    )
+        showarrow=True, arrowhead=2, ax=40, ay=-40, font=dict(size=11, color='#666'))
 
     fig.update_layout(
-        xaxis_title="Year",
-        yaxis_title="Frost Days (Jan-Mar, TMIN <= 32°F)",
-        hovermode='x unified',
-        height=450,
-        template='plotly_white'
-    )
+        xaxis_title="Year (January-March of that year)", yaxis_title="Frost Days (Jan-Mar, TMIN <= 32°F)",
+        hovermode='x unified', height=470, template='plotly_white',
+        legend=dict(orientation="h", yanchor="top", y=-0.2))
     return fig
 
 
@@ -601,7 +395,7 @@ def update_county_frost(selected_counties):
     Input('county-checklist', 'value')
 )
 def update_county_acreage(selected_counties):
-    """Real bearing acreage trend, Census years only, per county.
+    """Bearing acreage trend, Census years only, per county.
 
     Every Census year is plotted; where USDA withheld the total the value is
     blank, so the line breaks instead of bridging the gap.
@@ -613,22 +407,13 @@ def update_county_acreage(selected_counties):
             (county_features['county_name'] == county) & (county_features['acreage_status'].notna())
         ].sort_values('year')
         fig.add_trace(go.Scatter(
-            x=sub['year'],
-            y=sub['bearing_acres'],
-            mode='lines+markers',
-            connectgaps=False,
-            name=county,
-            line=dict(color=COUNTY_COLORS.get(county), width=2, dash='dot'),
-            marker=dict(size=9)
+            x=sub['year'], y=sub['bearing_acres'], mode='lines+markers', connectgaps=False, name=county,
+            line=dict(color=COUNTY_COLORS.get(county), width=2, dash='dot'), marker=dict(size=9)
         ))
 
     fig.update_layout(
-        xaxis_title="Census Year",
-        yaxis_title="Bearing Acres (ORANGES)",
-        hovermode='x unified',
-        height=450,
-        template='plotly_white'
-    )
+        xaxis_title="Census Year", yaxis_title="Bearing Acres (ORANGES)",
+        hovermode='x unified', height=450, template='plotly_white')
     return fig
 
 
@@ -641,7 +426,7 @@ def update_county_latest(selected_counties, selected_year):
     """Bar comparison of key indicators for a user-selected year.
 
     Uses 3 separate subplots (not one grouped bar chart) because
-    frost days (0-14), temp (85-95F), and GDD (3800-4300) live on
+    frost days (0-25), temp (85-95F), and GDD (3800-4300) live on
     wildly different scales - combining them in one chart made the
     smaller-scale bars visually disappear next to GDD.
     """
@@ -666,9 +451,9 @@ def update_county_latest(selected_counties, selected_year):
     tmax_vals = [sub[sub['county_name'] == c]['tmax_mean_grow'].values[0] for c in counties_ordered]
     gdd_vals = [sub[sub['county_name'] == c]['gdd_total_grow'].values[0] for c in counties_ordered]
 
-    # A value is NA when the county's stations were missing some days in the
-    # window. That is "missing", not zero: it gets no bar and an italic label.
-    # A real zero keeps its bar and a "0" label so it can't be mistaken for it.
+    # A value is NA when the station was missing too many days in the window.
+    # That is "missing", not zero: it gets no bar and an italic label. A real
+    # zero keeps its bar and a "0" label so it can't be mistaken for it.
     def bar_data(values, fmt):
         y = [0 if pd.isna(v) else v for v in values]
         text = ["<i>missing</i>" if pd.isna(v) else format(v, fmt) for v in values]
@@ -705,16 +490,8 @@ def update_county_latest(selected_counties, selected_year):
     else:
         frost_note = ""
 
-    fig.update_layout(
-        title=f"{selected_year} Snapshot" + frost_note,
-        height=450,
-        template='plotly_white'
-    )
+    fig.update_layout(title=f"{selected_year} Snapshot" + frost_note, height=450, template='plotly_white')
     return fig
-
-
-# Placeholder for plotly subplots import
-from plotly.subplots import make_subplots
 
 
 # Expose Flask server for Gunicorn (Render, Heroku, etc.)
