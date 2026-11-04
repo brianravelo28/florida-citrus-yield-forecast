@@ -4,7 +4,7 @@
 
 A dashboard of the US citrus industry since 1990: bearing acreage, yield, price and value of production for oranges, grapefruit, tangerines, lemons and tangelos in the four states USDA surveys (Florida, California, Texas and Arizona), with a closer look inside Florida's orange industry (winter frost by weather station and county acreage). It is built from public data from the USDA's National Agricultural Statistics Service (NASS) and NOAA (the National Oceanic and Atmospheric Administration). It asks one question: **how has the US citrus industry changed since 1990, and where did it go?** It is for anyone following US agriculture, including analysts and students.
 
-**Live dashboard:** <https://florida-orange-yield-dashboard.onrender.com/> (free tier: the first load after idle can take about 40 seconds)
+**Live dashboard:** <https://us-citrus-industry-dashboard.onrender.com/> (free tier: the first load after idle can take about 40 seconds)
 
 ## What the data shows
 
@@ -41,8 +41,8 @@ Nothing is estimated or filled in. Of the 2,483 citrus values, 63 are blank: NAS
 ## Run it
 
 ```bash
-git clone https://github.com/brianravelo28/florida-orange-yield-dashboard.git
-cd florida-orange-yield-dashboard
+git clone https://github.com/brianravelo28/us-citrus-industry-dashboard.git
+cd us-citrus-industry-dashboard
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python run_dashboard.py          # http://127.0.0.1:8050  (run from the repo root)

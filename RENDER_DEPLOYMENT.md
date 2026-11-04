@@ -1,6 +1,6 @@
 # Render Deployment
 
-Live: <https://florida-orange-yield-dashboard.onrender.com/>
+Live: <https://us-citrus-industry-dashboard.onrender.com/>
 
 On the free tier the service sleeps when idle, so the first request after a pause can take about 40 seconds.
 
