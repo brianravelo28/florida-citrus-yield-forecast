@@ -195,13 +195,6 @@ def test_frost_summary_counts_only_complete_winters():
     assert row["trend_days_per_decade"] > 0   # rising counts give a positive trend
 
 
-def test_committed_yield_marks_only_the_latest_season_preliminary():
-    df = pd.read_csv("data/nass_yield.csv")
-    assert list(df["year"]) == list(range(df["year"].min(), df["year"].max() + 1))   # no missing years
-    assert df.loc[df["year"] == df["year"].max(), "status"].item() == "preliminary"
-    assert (df.loc[df["year"] < df["year"].max(), "status"] == "reported").all()
-
-
 def test_committed_stations_use_noaa_county_not_the_panel_label():
     st = pd.read_csv("data/stations.csv").set_index("station_label")
     assert st.loc["Moore Haven Lock 1", "county_noaa"] == "Glades"

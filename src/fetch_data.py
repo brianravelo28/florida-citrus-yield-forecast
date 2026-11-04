@@ -1,19 +1,18 @@
 """
-Fetch Florida statewide orange yield from USDA NASS QuickStats, 1990-2026,
-and hold the helpers shared by the other fetch scripts (API client, plausibility
-bounds, key lookup).
+Helpers shared by the fetch scripts: the API client with retries, key lookup,
+the plausibility bounds for weather readings, and the year range and the
+preliminary-season rule. Run the fetch scripts themselves (fetch_industry_data.py,
+fetch_county_data.py, ...), not this file.
 
-If an API call fails, the run stops with an error and writes nothing. There is
-deliberately no fallback to substitute data: a failed fetch must never produce
-files that look like real data.
+If an API call fails, a fetch script stops with an error and writes nothing.
+There is deliberately no fallback to substitute data: a failed fetch must never
+produce files that look like real data.
 """
 
 import os
-import sys
 import time
 from pathlib import Path
 
-import pandas as pd
 import requests
 
 
@@ -37,8 +36,6 @@ Path("data").mkdir(exist_ok=True)
 TMAX_BOUNDS = (20.0, 110.0)
 TMIN_BOUNDS = (-5.0, 85.0)
 PRCP_BOUNDS = (0.0, 20.0)
-
-FL_ORANGE_BOX_LBS = 90  # Standard FDOC/USDA Florida orange box weight (lbs)
 
 
 class FetchError(RuntimeError):
@@ -96,94 +93,3 @@ def get_json(url, params, headers=None, attempts=3):
         if attempt < attempts:
             time.sleep(2 ** attempt)
     raise FetchError(f"{url} failed after {attempts} attempts ({reason})")
-
-
-def fetch_nass_yield():
-    """Fetch FL statewide orange yield from USDA NASS (START_YEAR-END_YEAR).
-
-    QuickStats has no county-level orange yield or production: county rows
-    for oranges and citrus totals cover Census area statistics only. (NASS's
-    Citrus Summary publication does list county production, but those are
-    apportionments of the statewide harvest, not county measurements.) Yield
-    is only available at STATE level, reported in BOXES/ACRE, which we convert
-    to LB/ACRE using the standard FL orange box weight (90 lbs/box).
-    """
-    print("Fetching USDA NASS Florida orange yield data...")
-
-    params = {
-        "key": require_key("NASS_KEY"),
-        "commodity_desc": "ORANGES",
-        "state_alpha": "FL",
-        "agg_level_desc": "STATE",
-        "statisticcat_desc": "YIELD",
-        "unit_desc": "BOXES / ACRE",
-        "class_desc": "ALL CLASSES",
-        "util_practice_desc": "ALL UTILIZATION PRACTICES",
-        "year__GE": str(START_YEAR),
-        "year__LE": str(END_YEAR),
-        "format": "json",
-    }
-    data = get_json("https://quickstats.nass.usda.gov/api/api_GET/", params)
-
-    rows = data.get("data")
-    if not rows:
-        raise FetchError(f"NASS returned no yield records ({data.get('error', 'no error message')})")
-
-    records = []
-    for row in rows:
-        val = str(row.get("Value", "")).strip()
-        # Skip suppressed/unavailable values
-        if val in ("", "(D)", "(NA)", "(S)", "(Z)"):
-            continue
-        try:
-            year = int(row.get("year"))
-            records.append({
-                "county_name": "Florida (Statewide)",
-                "year": year,
-                "yield_lbs_acre": float(val.replace(",", "")) * FL_ORANGE_BOX_LBS,
-                "status": "preliminary" if year in PRELIMINARY_YEARS else "reported",
-                "data_source": "NASS",
-            })
-        except (ValueError, TypeError):
-            continue
-
-    df = pd.DataFrame(records)
-    df = df[(df["year"] >= START_YEAR) & (df["year"] <= END_YEAR)]
-    df = df.sort_values("year").reset_index(drop=True)
-
-    missing = sorted(set(range(START_YEAR, END_YEAR + 1)) - set(df["year"]))
-    if missing:
-        raise FetchError(f"NASS yield is missing years: {missing}")
-    if df["year"].duplicated().any():
-        raise FetchError("NASS returned more than one yield row for a year")
-
-    print(f"  [OK] Fetched {len(df)} yield records ({START_YEAR}-{END_YEAR}; {END_YEAR} is preliminary)")
-    return df
-
-
-def main():
-    print("=" * 60)
-    print("CITRUS DATA - STATEWIDE ORANGE YIELD")
-    print("=" * 60)
-
-    # Fetch first; write only if the fetch succeeded.
-    try:
-        df_yield = fetch_nass_yield()
-    except FetchError as e:
-        print(f"\n[FAILED] {e}")
-        print("Nothing was written; existing data files are unchanged.")
-        sys.exit(1)
-
-    df_yield.to_csv("data/nass_yield.csv", index=False)
-    print(f"\n[OK] Saved: data/nass_yield.csv")
-
-    print("\nRecent years (lb/acre):")
-    print(df_yield.tail(6)[["year", "yield_lbs_acre", "status"]].to_string(index=False))
-    peak = df_yield.loc[df_yield["yield_lbs_acre"].idxmax()]
-    low = df_yield.loc[df_yield["yield_lbs_acre"].idxmin()]
-    print(f"\nPeak {int(peak['year'])}: {peak['yield_lbs_acre']:,.0f}   Low {int(low['year'])}: {low['yield_lbs_acre']:,.0f}   "
-          f"(low is {1 - low['yield_lbs_acre'] / peak['yield_lbs_acre']:.0%} below the peak)")
-
-
-if __name__ == "__main__":
-    main()

@@ -4,15 +4,21 @@ All files are CSVs in `data/`. Temperatures are degrees F; raw precipitation is 
 
 ## Raw data
 
-### `data/nass_yield.csv` - 37 rows (1990-2026)
+### `data/citrus_by_state.csv` - 2,483 rows (1990-2026)
+
+One row per fruit, state, year and measure, from NASS state surveys (`src/fetch_industry_data.py`). Forecast rows for the coming season are dropped.
 
 | Column | Description |
 |---|---|
-| `county_name` | Always `Florida (Statewide)` (county yield is not published in QuickStats) |
+| `fruit` | Oranges, Grapefruit, Tangerines, Lemons, Tangelos |
+| `state` | `FL`, `CA`, `TX`, `AZ` (a fruit appears only in the states and years NASS publishes it) |
 | `year` | NASS season, labeled by its end year (2023 is the 2022-23 season) |
-| `yield_lbs_acre` | NASS `BOXES / ACRE` x 90 lb/box |
+| `measure` | `bearing_acres` (acres), `yield_boxes_per_acre`, `production_boxes` (utilized boxes), `production_tons` (utilized tons, recent years only), `value_of_production_usd` (nominal dollars, packinghouse-door equivalent), `price_usd_per_box` (marketing year, packinghouse-door equivalent) |
+| `value` | The published value. **Blank when NASS withheld it or marked it not available** |
+| `note` | Empty, or why the value is blank: `withheld (D)` or `not available (NA)` |
 | `status` | `reported`, or `preliminary` for the season ending in 2026 (NASS's August estimate, revised a year later) |
-| `data_source` | `NASS` |
+
+Blank values: 63 of 2,483 (48 withheld, 15 not available). A value is never estimated. One published value is flagged by the dashboard but not changed: `yield_boxes_per_acre` for California oranges in 2022 (58), which conflicts with NASS's own production and acreage (see [METHODOLOGY.md](METHODOLOGY.md#checks-on-the-data)).
 
 ### `data/county_acreage.csv` - 20 rows
 
