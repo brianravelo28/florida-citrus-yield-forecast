@@ -1,9 +1,9 @@
 # Render Blueprint for the dashboard. The service name below sets its default
-# address (florida-orange-yield-dashboard.onrender.com). The Python version is
+# address (us-citrus-industry-dashboard.onrender.com). The Python version is
 # also shown at the top of the build log.
 services:
   - type: web
-    name: florida-orange-yield-dashboard
+    name: us-citrus-industry-dashboard
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
