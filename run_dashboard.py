@@ -14,9 +14,6 @@ os.chdir(Path(__file__).parent)
 # Check if all required data files exist
 required_files = [
     'data/citrus_by_state.csv',
-    'data/county_features.csv',
-    'data/stations.csv',
-    'data/station_frost_summary.csv',
 ]
 
 print("Checking required data files...")
@@ -25,8 +22,6 @@ for file in required_files:
         print(f"ERROR: Missing {file}")
         print("Please run the pipeline first (see the README):")
         print("  python src/fetch_industry_data.py")
-        print("  python src/fetch_county_data.py")
-        print("  python src/county_feature_engineering.py")
         sys.exit(1)
 
 print("[OK] All data files present\n")
