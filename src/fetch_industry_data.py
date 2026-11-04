@@ -13,12 +13,56 @@ before they are charted.
 Needs NASS_KEY; a failed request stops the run and writes nothing.
 """
 
+import os
 import sys
 import time
 
 import pandas as pd
+import requests
 
-from fetch_data import END_YEAR, PRELIMINARY_YEARS, START_YEAR, FetchError, get_json, require_key
+
+START_YEAR, END_YEAR = 1990, 2026
+
+# NASS labels a citrus season by its END year: 2023 is the 2022-23 season. NASS publishes the
+# season that ends in END_YEAR as a preliminary estimate in August and revises it a year later,
+# so only that last year is marked "preliminary".
+PRELIMINARY_YEARS = {END_YEAR}
+
+
+class FetchError(RuntimeError):
+    """A data fetch failed. Nothing should be written when this is raised."""
+
+
+def require_key(name):
+    """Read an API credential from the environment; fail clearly if it is unset.
+
+    The key is read at fetch time, not import time, and the error never echoes a value.
+    """
+    value = os.environ.get(name, "").strip()
+    if not value:
+        raise FetchError(f"{name} is not set. Get a free key (see README) and export it as an environment variable.")
+    return value
+
+
+def get_json(url, params, headers=None, attempts=3):
+    """GET and parse JSON, retrying transient failures; raise FetchError if all fail.
+
+    Error text deliberately omits the request URL: requests' own messages
+    include it, and the NASS key travels in the query string.
+    """
+    reason = "unknown error"
+    for attempt in range(1, attempts + 1):
+        try:
+            response = requests.get(url, params=params, headers=headers, timeout=30)
+            response.raise_for_status()
+            return response.json()
+        except requests.HTTPError as e:
+            reason = f"HTTP {e.response.status_code}"
+        except (requests.RequestException, ValueError) as e:
+            reason = type(e).__name__
+        if attempt < attempts:
+            time.sleep(2 ** attempt)
+    raise FetchError(f"{url} failed after {attempts} attempts ({reason})")
 
 FRUITS = ["ORANGES", "GRAPEFRUIT", "TANGERINES", "LEMONS", "TANGELOS"]
 
