@@ -48,6 +48,10 @@ Only the all-classes total is used (not single varieties or fresh/processing spl
 - **Yield units differ by state.** Box weights differ across states, so raw boxes per acre are not comparable across states. The dashboard offers yield as a share of each state's own peak, and notes this on the yield chart.
 - **Dollars add up, boxes do not.** Different fruits and states have different box weights, so totals across them use acres and dollars only.
 
+## Deployment notes
+
+The dashboard runs on Render's free plan from `main` (`render.yaml`), started with `gunicorn src.app:server`; the health check path is `/healthz`, and the Render dashboard's settings override `render.yaml`. On 2026-11-11 `/debugz` on the live service reported Python 3.14.8 and the pinned package versions, and a resident memory of 116.8 MB just after the process started and 129.1 MB after all three tabs and both dollar modes had been used. These are hosted figures from one process; local figures differ.
+
 ## Reproducibility
 
 The NASS key is read from the `NASS_KEY` environment variable; nothing is stored in the code. The BLS price-index fetch (`src/fetch_cpi.py`) needs no key. `data/manifest.json` records each data file's source, the date it was pulled, its row count and its SHA-256 (computed with line endings normalized, so a Windows and a Linux checkout agree); the fetch scripts write it and the dashboard's source notice reads the dates from it. The fetch retries transient failures, then stops and writes nothing if any request fails, a state-year has more than one citrus row, or the totals request returns nothing.

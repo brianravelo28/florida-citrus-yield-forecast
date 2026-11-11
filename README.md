@@ -1,6 +1,6 @@
 # US Citrus Industry: Acreage, Yield and Value by State
 
-![US Citrus Industry dashboard](docs/screenshot.jpg)
+![US Citrus Industry dashboard](docs/screenshot.png)
 
 <https://us-citrus-industry-dashboard.onrender.com/> (free tier: the first load after idle can take up to a minute)
 
