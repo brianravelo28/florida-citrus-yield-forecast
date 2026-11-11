@@ -22,6 +22,7 @@ Things to know:
 - **The path is `/api/api_GET/`.** `/api/get` returns 404.
 - **Operators use double underscores:** `year__GE`, `year__LE`.
 - **Commodity names must match exactly.** There is no plain `CITRUS`; use `ORANGES`, `GRAPEFRUIT`, `TANGERINES`, `LEMONS`, `TANGELOS` or `CITRUS TOTALS`. List valid values with `/api/get_param_values/?key=...&param=commodity_desc`.
+- **`CITRUS TOTALS` is a state total across all citrus, from 2008.** The same query with `commodity_desc=CITRUS TOTALS` returns bearing acres and value of production for each state (`unit_desc` `ACRES` and `$, PHD EQUIV`; class `ALL CLASSES`, domain `TOTAL`), 2008 to the preliminary season. The value totals include fruit values that are withheld `(D)` in the fruit-level rows, so they cover 2009-2016 where the fruit rows are blank.
 - **The value field is `Value` (capital V).** Reading lowercase `value` silently yields nothing. Suppression codes such as `(D)` can arrive padded with whitespace.
 - **`(D)` means withheld**, not zero or missing: NASS withholds the value to avoid disclosing individual operations' data.
 - **QuickStats has yield and production only at state level** for citrus. County-level rows cover Census area statistics only; querying `PRODUCTION` or `YIELD` at county level returns HTTP 400. NASS's separate Citrus Summary publication lists county production, but states that it is an apportionment of the statewide harvest, not a county measurement.

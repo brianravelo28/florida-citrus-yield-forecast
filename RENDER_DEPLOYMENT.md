@@ -20,7 +20,7 @@ On the free tier the service sleeps when idle, so the first request after a paus
 
 The app reads `data/*.csv` at import time, so the files below must be committed. If a deploy crashes with `FileNotFoundError: data/...csv`, a required file is missing from the repo.
 
-The files the app loads: `data/citrus_by_state.csv`.
+The files the app loads: `data/citrus_by_state.csv` and `data/citrus_totals_by_state.csv`.
 
 ## Updating
 

@@ -25,13 +25,14 @@ Dollar values are nominal (not adjusted for inflation), so the dashboard compare
 
 | Dataset | Source | Details |
 |---|---|---|
-| Citrus by fruit and state | USDA NASS QuickStats, state surveys | Oranges, grapefruit, tangerines, lemons, tangelos; Florida, California, Texas, Arizona; 1990-2026; bearing acres, yield, utilized production, value of production, price per box. 2,483 values. NASS labels a season by its end year (2023 is the 2022-23 season). 2026 is preliminary. |
+| Citrus by fruit and state | USDA NASS QuickStats, state surveys | Oranges, grapefruit, tangerines, lemons, tangelos; Florida, California, Texas, Arizona; 1990-2026; bearing acres, yield, utilized production, value of production, price per box. 2,483 rows. NASS labels a season by its end year (2023 is the 2022-23 season). 2026 is preliminary. |
+| NASS state totals, all citrus | USDA NASS QuickStats (commodity `CITRUS TOTALS`) | Bearing acres and value of production for each of the four states, 2008-2026; 152 rows. Includes values NASS withholds at the fruit level. |
 
-All data are real observations; none is synthetic. The file was pulled on 2026-11-03. How the data were checked, and the rules for totals and gaps, are in [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
+All data are real observations; none is synthetic. Both files were pulled on 2026-11-10. How the data were checked, and the rules for totals and gaps, are in [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 
 ## Missing and withheld data
 
-Nothing is estimated or filled in. Of the 2,483 citrus values, 63 are blank: NASS withheld 48 and marked 15 not available, mostly California and Arizona value and price figures for tangerines and lemons in 2009-2016. A total is shown only in years when every published fruit and state has a value, so the value totals have a visible gap in 1991 and 2009-2016, and the acreage total in 2010-2012. One published value is shown as a gap: **NASS's QuickStats gives California's 2022 orange yield as 58 boxes per acre, but its own production and acreage in the same database imply about 285, and NASS's [Citrus Fruits 2022 Summary](https://esmis.nal.usda.gov/sites/default/release-files/j9602060k/pn89ff24k/1544cx74m/cfrt0922.txt) prints 289.** The published value stays in the data file.
+Nothing is estimated or filled in. Of the 2,483 citrus rows, 63 are blank: NASS withheld 48 and marked 15 not available, mostly California and Arizona value and price figures for tangerines and lemons in 2009-2016. A sum of fruit values is shown only in years when every published fruit and state has a value, so the value-by-fruit stacks are empty in 1991 and 2009-2016. NASS publishes its own state totals for all citrus from 2008, which include the withheld values, so the US and state totals use those from 2008 and the fruit sums before that. The one remaining gap in the totals is 1991. Where both exist, the fruit sums equal NASS's acreage totals in every state-year and its value totals within 1%. On that basis the US value of production peaked in 2012 at $3.71 billion (nominal). One published value is shown as a gap: **NASS's QuickStats gives California's 2022 orange yield as 58 boxes per acre, but its own production and acreage in the same database imply about 285, and NASS's [Citrus Fruits 2022 Summary](https://esmis.nal.usda.gov/sites/default/release-files/j9602060k/pn89ff24k/1544cx74m/cfrt0922.txt) prints 289.** The published value stays in the data file.
 
 ## Run it
 
@@ -47,7 +48,7 @@ Requires Python 3.12 or newer (the pinned numpy needs it); `requirements.txt` is
 
 ```bash
 export NASS_KEY=your-nass-key           # PowerShell: $env:NASS_KEY = "your-nass-key"
-python src/fetch_industry_data.py        # citrus by fruit and state, with a sanity report
+python src/fetch_industry_data.py        # citrus by fruit and state, plus NASS's state totals, with a sanity report
 ```
 
 A failed API call stops the script and writes nothing.
@@ -56,7 +57,7 @@ A failed API call stops the script and writes nothing.
 
 - **Dollars are nominal.** They are not adjusted for inflation, so only shares and physical measures (acres, boxes) are compared across decades. Dollar totals use NASS's packinghouse-door equivalent basis.
 - **Four states.** NASS surveys citrus in Florida, California, Texas and Arizona. Arizona's oranges stop in 2012, grapefruit in 2009 and tangerines in 2015.
-- **Gaps in the totals** (above) mean some peaks and trends cannot be read across 2009-2016.
+- **Fruit-level gaps.** The value-by-fruit and by-state stacks are empty where NASS withheld a fruit's value (1991 and 2009-2016); only the totals are filled, from NASS's own state totals.
 - **Box weights differ by state,** so yield is compared as a change over time or a share of each state's own peak, not as raw boxes per acre across states. Markets differ too (for example, how much fruit is sold fresh and how much is juiced); that is not measured here.
 - **The 2026 values are preliminary** and NASS revises them a year later.
 - **Descriptive only.** The data show what changed and where, not why. Disease (citrus greening, HLB), hurricanes, weather, land use and markets are not analyzed.
@@ -65,7 +66,7 @@ Possible later additions: weather-based research (for example NOAA station data 
 
 ## Tests
 
-`pytest` runs small checks on the totals rule (a total is blank when a part is missing), the yield cross-check, and the committed data (one row per series and year, 2026 marked preliminary, no forecast rows, every blank has a reason, and the only conflicting yield is California oranges 2022). CI runs them on every push.
+`pytest` runs small checks on the totals rule (a sum is blank when a part is missing), the use of NASS's own totals where they exist, the yield cross-check, and the committed data (one row per series and year, 2026 marked preliminary, no forecast rows, every blank has a reason, the fruit sums agree with NASS's totals, and the only conflicting yield is California oranges 2022). CI runs them on every push.
 
 ## Project structure
 
@@ -73,7 +74,7 @@ Possible later additions: weather-based research (for example NOAA station data 
 src/        fetch_industry_data (NASS fetch and sanity report), citrus_data (totals and
             checks), app (Dash dashboard)
 tests/      citrus data tests
-data/       citrus_by_state.csv
+data/       citrus_by_state.csv, citrus_totals_by_state.csv
 docs/       METHODOLOGY, SCHEMA, API_SOURCES, citations
 ```
 
