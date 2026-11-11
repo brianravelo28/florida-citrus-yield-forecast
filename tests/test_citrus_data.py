@@ -57,6 +57,45 @@ def test_incomplete_years_and_year_ranges():
     assert bad == [2001, 2002, 2004] and cd.year_ranges(bad) == "2001-2002, 2004"
 
 
+# --- NASS's own state totals fill the years the fruit values leave blank -------------
+
+def totals_rows(state, measure, values, start=2000):
+    return [{"state": state, "year": start + i, "measure": measure, "value": v, "note": "", "status": "reported"}
+            for i, v in enumerate(values)]
+
+
+def test_published_totals_replace_the_sum_only_where_nass_publishes_them():
+    fruit = frame(rows("Oranges", "FL", "bearing_acres", [100, 100, 100, 100]),
+                  rows("Lemons", "CA", "bearing_acres", [10, 10, np.nan, 10]))            # lemons withheld in 2002
+    totals = pd.DataFrame(totals_rows("FL", "bearing_acres", [100, 100], start=2002)
+                          + totals_rows("CA", "bearing_acres", [12, 10], start=2002))     # NASS publishes 2002-2003
+    total = cd.combined_total(fruit, totals, "bearing_acres")
+    assert total.loc[2000] == 110 and total.loc[2001] == 110     # before NASS's series: the sum of the fruit values
+    assert total.loc[2002] == 112                                # withheld at fruit level, published in the total
+    assert total.loc[2003] == 110
+    by_state = cd.combined_total(fruit, totals, "bearing_acres", by="state")
+    assert by_state.loc[2002, "CA"] == 12 and by_state.loc[2001, "CA"] == 10
+    assert cd.combined_total(fruit, totals, "bearing_acres", state="CA").loc[2002] == 12
+
+
+def test_a_year_with_neither_a_complete_sum_nor_a_published_total_stays_blank():
+    fruit = frame(rows("Oranges", "FL", "bearing_acres", [100, 100, 100]),
+                  rows("Lemons", "CA", "bearing_acres", [10, np.nan, 10]))
+    totals = pd.DataFrame(totals_rows("FL", "bearing_acres", [100], start=2002)
+                          + totals_rows("CA", "bearing_acres", [10], start=2002))
+    total = cd.combined_total(fruit, totals, "bearing_acres")
+    assert pd.isna(total.loc[2001]) and cd.gap_years(total) == [2001]
+    # a published total that covers only some states does not make a national total
+    partial = pd.DataFrame(totals_rows("FL", "bearing_acres", [100], start=2001))
+    assert pd.isna(cd.combined_total(fruit, partial, "bearing_acres").loc[2001])
+
+
+def test_no_totals_for_a_measure_falls_back_to_the_complete_sum():
+    fruit = frame(rows("Oranges", "FL", "bearing_acres", [100, 100]))
+    totals = pd.DataFrame(totals_rows("FL", "value_of_production_usd", [1, 1]))
+    assert cd.combined_total(fruit, totals, "bearing_acres").loc[2000] == 100
+
+
 # --- yield cross-check ------------------------------------------------------------
 
 def test_conflicting_yield_is_flagged_and_blanked_without_changing_the_data():
@@ -86,6 +125,49 @@ def test_the_only_conflicting_yield_in_the_committed_data_is_california_oranges_
     assert [(r.fruit, r.state, r.year) for r in bad.itertuples()] == [("Oranges", "CA", 2022)]
     assert bad["published"].iloc[0] == 58 and 270 < bad["implied"].iloc[0] < 300
     assert ("Oranges", "CA", 2022) in cd.CONFLICT_CITATIONS
+
+
+def test_committed_totals_file_is_one_row_per_state_year_and_measure():
+    t = cd.load_totals()
+    assert len(t) == 152 and not t.duplicated(["state", "year", "measure"]).any()
+    assert set(t["state"]) == {"AZ", "CA", "FL", "TX"} and set(t["measure"]) == {"bearing_acres", "value_of_production_usd"}
+    assert t["year"].min() == 2008 and t["year"].max() == cd.load_citrus()["year"].max()
+    assert t["value"].notna().all() and t["note"].isna().all()          # NASS published every one; no suppression codes
+    assert (t.loc[t["year"] == t["year"].max(), "status"] == "preliminary").all()
+    assert (t.loc[t["year"] < t["year"].max(), "status"] == "reported").all()
+
+
+def test_fruit_sums_agree_with_nass_state_totals_where_no_fruit_value_is_blank():
+    df, t = cd.load_citrus(), cd.load_totals()
+    off = []
+    for measure in ("bearing_acres", "value_of_production_usd"):
+        parts = df[df["measure"] == measure].groupby(["state", "year"])["value"].agg(total="sum", blanks=lambda s: s.isna().sum())
+        m = t[t["measure"] == measure].merge(parts.reset_index(), on=["state", "year"])
+        complete = m[m["blanks"] == 0]
+        diff = (complete["total"] - complete["value"]).abs()
+        off += [(measure, r.state, r.year) for r in complete[diff >= 1].itertuples()]
+        assert (diff / complete["value"]).max() < 0.01                  # never more than 1% apart
+        if measure == "bearing_acres":
+            assert diff.max() == 0 and len(m) == 76                     # acres agree exactly in every state-year
+    # the three state-years where the fruit values sum above NASS's own total (0.03% to 0.93%)
+    assert sorted(off) == [("value_of_production_usd", "CA", 2018), ("value_of_production_usd", "FL", 2018),
+                           ("value_of_production_usd", "FL", 2020)]
+
+
+def test_with_nass_totals_the_us_series_have_one_gap_and_the_value_peak_is_2012():
+    df, t = cd.load_citrus(), cd.load_totals()
+    acres = cd.combined_total(df, t, "bearing_acres")
+    value = cd.combined_total(df, t, "value_of_production_usd")
+    assert cd.gap_years(acres) == []                                    # was 2010-2012 from the fruit sums alone
+    assert cd.gap_years(value) == [1991]                                # was 1991 and 2009-2016; Texas has no 1991 value
+    assert value.idxmax() == 2012 and value.loc[2012] == 3_712_817_000
+    assert value.loc[2017] == pytest.approx(3_532_125_000) and value.loc[2026] == pytest.approx(3_148_286_000)
+    by_state = cd.combined_total(df, t, "value_of_production_usd", by="state")
+    assert cd.gap_years(by_state) == [1991]
+    assert by_state.loc[2012].sum() == pytest.approx(value.loc[2012])    # the state totals add up to the US total
+    # a stacked frame: whole blank years are gaps, a column blank because its series ended is not
+    by_fruit = cd.complete_total(df, "value_of_production_usd", by="fruit")
+    assert cd.gap_years(by_fruit) == [1991] + list(range(2009, 2017))
 
 
 def test_florida_orange_acreage_and_yield_match_the_known_series():

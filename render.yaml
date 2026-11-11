@@ -8,6 +8,7 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn src.app:server --bind 0.0.0.0:$PORT
+    healthCheckPath: /healthz
     envVars:
       - key: PYTHON_VERSION
         value: "3.14.8"
