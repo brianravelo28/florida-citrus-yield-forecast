@@ -1,6 +1,6 @@
 # Data Schema
 
-Two CSVs in `data/`, pulled on 2026-11-10.
+Three CSVs in `data/`, pulled on 2026-11-10.
 
 ### `data/citrus_by_state.csv` - 2,483 rows (1990-2026)
 
@@ -30,5 +30,15 @@ NASS's own state totals across all citrus (QuickStats commodity `CITRUS TOTALS`)
 | `value` | The published total; every one of the 152 is present |
 | `note` | Empty (no value is withheld or unavailable) |
 | `status` | `reported`, or `preliminary` for the season ending in 2026 |
+
+### `data/cpi_u_monthly.csv` - 445 rows (October 1989 to October 2026)
+
+The US consumer price index, from the Bureau of Labor Statistics (CPI-U, all items, US city average, not seasonally adjusted; series `CUUR0000SA0`), written by `src/fetch_cpi.py`. Used to express dollar values in constant 2025 dollars (see [METHODOLOGY.md](METHODOLOGY.md#constant-dollars-shares-and-units)).
+
+| Column | Description |
+|---|---|
+| `year`, `month` | Calendar month of the index |
+| `cpi` | Index level (1982-84 = 100). **Blank for October 2025**, which BLS did not publish |
+| `note` | Empty, or BLS's reason for the blank ("Data unavailable due to the 2025 lapse in appropriations") |
 
 Blank values in the fruit file: 63 of 2,483 (48 withheld, 15 not available). A value is never estimated. One published value is flagged by the dashboard but not changed: `yield_boxes_per_acre` for California oranges in 2022 (58), which conflicts with NASS's own production and acreage (see [METHODOLOGY.md](METHODOLOGY.md#checks-on-the-data)).
