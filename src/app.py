@@ -20,8 +20,10 @@ except ImportError:                   # python src/app.py
 # Data (all committed CSVs; see docs/SCHEMA.md)
 # ---------------------------------------------------------------------------
 citrus = cd.load_citrus("data/citrus_by_state.csv")
+totals = cd.load_totals("data/citrus_totals_by_state.csv")      # NASS's own state totals, 2008 on
 citrus_plot = cd.blank_conflicts(citrus)          # flagged yields drawn as gaps; the file is untouched
 conflicts = cd.yield_conflicts(citrus)
+TOTALS_FIRST_YEAR = int(totals["year"].min())
 
 LATEST_YEAR = int(citrus["year"].max())
 LATEST_PRELIM = bool((citrus.loc[citrus["year"] == LATEST_YEAR, "status"] == "preliminary").all())
@@ -44,15 +46,18 @@ def _state(code):
 
 
 # ---------------------------------------------------------------------------
-# Industry summary, computed from the data (totals are blank in years with a missing part)
+# Industry summary, computed from the data. Totals use NASS's published state totals from 2008 and
+# the sum of the fruit values before that; a year with a missing part has no total.
 # ---------------------------------------------------------------------------
-acres_total = cd.complete_total(citrus, "bearing_acres").dropna()
-value_total = cd.complete_total(citrus, "value_of_production_usd").dropna()
-acres_by_state = cd.complete_total(citrus, "bearing_acres", by="state")
-value_by_state = cd.complete_total(citrus, "value_of_production_usd", by="state")
+acres_total_all = cd.combined_total(citrus, totals, "bearing_acres")
+value_total_all = cd.combined_total(citrus, totals, "value_of_production_usd")
+acres_total, value_total = acres_total_all.dropna(), value_total_all.dropna()
+acres_by_state = cd.combined_total(citrus, totals, "bearing_acres", by="state")
+value_by_state = cd.combined_total(citrus, totals, "value_of_production_usd", by="state")
 
 ACRES_PEAK_YEAR, ACRES_PEAK = int(acres_total.idxmax()), float(acres_total.max())
 ACRES_LATEST = float(acres_total.loc[LATEST_YEAR])
+VALUE_PEAK_YEAR, VALUE_PEAK = int(value_total.idxmax()), float(value_total.max())
 ACRES_FALL = round(-cd.pct_change(ACRES_LATEST, ACRES_PEAK))
 
 # Each state's share of the US value of production in the same year. Shares compare states with
@@ -104,12 +109,20 @@ def _shade_latest(fig):
                       annotation_text="prelim.", annotation_position="top left", annotation_font_size=10)
 
 
-def stacked_bars(total_by, title, ytitle, scale, colors, labels, hover_fmt):
-    """Stacked yearly bars; a year whose parts are not all published is left empty, not shown partly."""
+def stacked_bars(total_by, title, ytitle, scale, colors, labels, hover_fmt, total_line=None, line_name=""):
+    """Stacked yearly bars; a year whose parts are not all published is left empty, not shown partly.
+
+    `total_line` (a yearly Series) is drawn over the bars as NASS's published total, so a year whose
+    stack is empty still shows the total when NASS publishes one.
+    """
     fig = go.Figure()
     for col in total_by.columns:
         fig.add_trace(go.Bar(x=total_by.index, y=total_by[col] / scale, name=labels(col), marker_color=colors.get(col),
                              hovertemplate=f"<b>%{{x}}</b><br>{labels(col)}: %{{y:{hover_fmt}}}<extra></extra>"))
+    if total_line is not None:
+        fig.add_trace(go.Scatter(x=total_line.index, y=total_line / scale, mode="lines", name=line_name, connectgaps=False,
+                                 line=dict(color="#212529", width=2),
+                                 hovertemplate=f"<b>%{{x}}</b><br>{line_name}: %{{y:{hover_fmt}}}<extra></extra>"))
     fig.update_layout(barmode="stack", title=title, xaxis_title="Season (end year)", yaxis_title=ytitle,
                       height=430, template="plotly_white", hovermode="x unified",
                       legend=dict(orientation="h", yanchor="top", y=-0.18))
@@ -117,13 +130,17 @@ def stacked_bars(total_by, title, ytitle, scale, colors, labels, hover_fmt):
     return fig
 
 
-def gap_note(df, measure, scope_label):
-    """Sentence naming the years in which a total is left empty because a part is missing."""
-    years = cd.incomplete_years(df, measure)
+TOTALS_NOTE = (f" Totals use NASS's own published state totals from {TOTALS_FIRST_YEAR} and, before that, the sum of "
+               "the fruit values (the two agree where both exist; see the Methodology).")
+
+
+def gap_note(total, scope_label):
+    """Sentence naming the years in which a total is left empty because NASS published no value for a part."""
+    years = cd.gap_years(total)
     if not years:
         return ""
-    return (f" {scope_label} is left empty in {cd.year_ranges(years)}: in those years NASS withheld or did not "
-            "publish a value for at least one fruit and state, and a partial total would understate it.")
+    return (f" {scope_label} is left empty in {cd.year_ranges(years)}: NASS published no value for at least one fruit "
+            "and state that year and no state total either, and a partial total would understate it.")
 
 
 def build_acres_by_state():
@@ -131,11 +148,29 @@ def build_acres_by_state():
                         STATE_COLORS, _state, ",.0f")
 
 
-def build_value_by_fruit():
+def _value_by_fruit_frame():
     by_fruit = cd.complete_total(citrus, "value_of_production_usd", by="fruit")
-    by_fruit = by_fruit[[f for f in cd.FRUIT_ORDER if f in by_fruit.columns]]
-    return stacked_bars(by_fruit, "Value of Production, by Fruit", "Value of production ($ million, nominal)", 1e6,
-                        FRUIT_COLORS, lambda f: f, ",.0f")
+    return by_fruit[[f for f in cd.FRUIT_ORDER if f in by_fruit.columns]]
+
+
+def build_value_by_fruit():
+    return stacked_bars(_value_by_fruit_frame(), "Value of Production, by Fruit",
+                        "Value of production ($ million, nominal)", 1e6, FRUIT_COLORS, lambda f: f, ",.0f",
+                        total_line=value_total_all, line_name="US total")
+
+
+def value_by_fruit_note():
+    """Footnote for the value-by-fruit chart: why stacks are empty where the total line is not."""
+    stack_gaps = cd.gap_years(_value_by_fruit_frame())
+    note = ""
+    if stack_gaps:
+        note = (f" The fruit stacks are empty in {cd.year_ranges(stack_gaps)}: NASS withheld the value of at least one "
+                "fruit and state, and a partial stack would understate it.")
+    note += (f" The line is the US total: NASS's published state totals from {TOTALS_FIRST_YEAR} (which include the "
+             f"values withheld at the fruit level) and the sum of the fruit values before that. The nominal total "
+             f"peaked in {VALUE_PEAK_YEAR} at ${VALUE_PEAK / 1e9:.2f} billion.")
+    note += gap_note(value_total_all, "The line")
+    return note
 
 
 def build_value_share_by_state():
@@ -180,8 +215,9 @@ app.layout = html.Div([
                     html.P(html.I(
                         f"Totals cover oranges, grapefruit, tangerines, lemons and tangelos in the four states NASS "
                         f"surveys (Florida, California, Texas, Arizona), from NASS's annual state surveys. Percent "
-                        f"changes are measured from each total's own peak. A total is shown only in years when every "
-                        f"published fruit and state has a value."), style={'fontSize': '12px', 'color': '#888', 'marginBottom': '20px'}),
+                        f"changes are measured from each total's own peak. Totals use NASS's own published state totals "
+                        f"from {TOTALS_FIRST_YEAR} and, before that, the sum of the fruit values, which is left blank in a year "
+                        f"when a value is missing."), style={'fontSize': '12px', 'color': '#888', 'marginBottom': '20px'}),
                     html.Div([
                         create_kpi_card(f"US bearing acres, peak ({ACRES_PEAK_YEAR})", ACRES_PEAK, "acres", COLORS['warning']),
                         create_kpi_card(f"US bearing acres ({LATEST_YEAR}{', prelim.' if LATEST_PRELIM else ''})", ACRES_LATEST,
@@ -194,16 +230,17 @@ app.layout = html.Div([
                 ], style=CARD_STYLE),
 
                 html.Div([dcc.Graph(figure=build_acres_by_state()), chart_hint(),
-                          html.P(PRELIM_NOTE + gap_note(citrus, "bearing_acres", "The acreage total"),
+                          html.P(PRELIM_NOTE + TOTALS_NOTE + gap_note(acres_by_state, "The acreage total"),
                                  style=FOOTNOTE_STYLE)], style=CARD_STYLE),
                 html.Div([dcc.Graph(figure=build_value_share_by_state()), chart_hint(),
                           html.P("Each bar is the share of that year's US value of production, so it compares states "
-                                 "with each other and is not affected by inflation." + gap_note(citrus, "value_of_production_usd", "The value total"),
+                                 "with each other and is not affected by inflation." + TOTALS_NOTE
+                                 + gap_note(value_by_state, "The value total"),
                                  style=FOOTNOTE_STYLE)], style=CARD_STYLE),
                 html.Div([dcc.Graph(figure=build_value_by_fruit()), chart_hint(),
                           html.P(NOMINAL_NOTE + " Because they are not adjusted, dollar values should not be compared "
                                  "across decades as if they bought the same amount; use the share chart above for that."
-                                 + gap_note(citrus, "value_of_production_usd", "The value total"),
+                                 + value_by_fruit_note(),
                                  style=FOOTNOTE_STYLE)], style={**CARD_STYLE, 'marginBottom': '0'}),
             ], style={'padding': '20px'})
         ]),
@@ -326,14 +363,18 @@ def update_fruit(fruit, metric):
 def _state_stack(state, measure, scale, ytitle, title, hover_fmt, note_prefix):
     by_fruit = cd.complete_total(citrus, measure, by="fruit", state=state)
     by_fruit = by_fruit[[f for f in cd.FRUIT_ORDER if f in by_fruit.columns]]
-    fig = stacked_bars(by_fruit, title, ytitle, scale, FRUIT_COLORS, lambda f: f, hover_fmt)
+    state_total = cd.combined_total(citrus, totals, measure, state=state)
+    fig = stacked_bars(by_fruit, title, ytitle, scale, FRUIT_COLORS, lambda f: f, hover_fmt,
+                       total_line=state_total, line_name=f"{_state(state)} total")
     years = cd.incomplete_years(citrus, measure, state)
     notes = [note_prefix] if note_prefix else []
     if LATEST_PRELIM:
         notes.append(PRELIM_NOTE)
     if years:
-        notes.append(f"Left empty in {cd.year_ranges(years)}: NASS withheld or did not publish a value for at least one "
-                     f"fruit in {_state(state)}, and a partial stack would understate it.")
+        notes.append(f"The stack is empty in {cd.year_ranges(years)}: NASS withheld or did not publish a value for at "
+                     f"least one fruit in {_state(state)}, and a partial stack would understate it.")
+    notes.append(f"The line is the {_state(state)} total: NASS's published state total from {TOTALS_FIRST_YEAR} and, "
+                 f"before that, the sum of the fruit values.")
     return fig, html.Div([html.P(n, style=FOOTNOTE_STYLE) for n in notes])
 
 

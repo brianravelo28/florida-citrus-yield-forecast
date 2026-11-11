@@ -76,6 +76,42 @@ def complete_total(df, measure, by=None, state=None):
     return total if by is None else total.unstack(by)
 
 
+def load_totals(path="data/citrus_totals_by_state.csv"):
+    """NASS's own state totals across all citrus (acres and value), 2008 on."""
+    return pd.read_csv(path)
+
+
+def combined_total(df, totals, measure, by=None, state=None):
+    """Industry total of a measure per year (or per year and state), NaN where no total can be stated.
+
+    Years NASS publishes its own state totals for (2008 on) use those totals, because NASS includes
+    values it withholds at the fruit level. Earlier years use `complete_total`: the sum of the fruit
+    values, blank in a year with a missing component. `by` is None or "state"; `state` restricts the
+    total to one state.
+    """
+    if by not in (None, "state"):
+        raise ValueError("by must be None or 'state'")
+    base = complete_total(df, measure, by=by, state=state)
+    t = totals[totals["measure"] == measure]
+    if state is not None:
+        t = t[t["state"] == state]
+    if t.empty:
+        return base
+    states = [state] if state is not None else sorted(df.loc[df["measure"] == measure, "state"].unique())
+    published = t.pivot(index="year", columns="state", values="value").reindex(columns=states)
+    if by is None:
+        published = published.sum(axis=1, min_count=len(states))          # NaN unless every state is published
+    return published.combine_first(base).sort_index()
+
+
+def gap_years(total):
+    """Years in which a total is blank. For a frame (one column per fruit or state) a gap year is one in
+    which every column is blank, as `complete_total` blanks a whole year; a column that is blank because
+    its series ended or has not started is not a gap."""
+    blank = total.isna() if isinstance(total, pd.Series) else total.isna().all(axis=1)
+    return sorted(int(y) for y in blank[blank].index)
+
+
 def incomplete_years(df, measure, state=None):
     """Years in which the total for the measure has a missing component."""
     grid = expected_grid(df, measure, state)

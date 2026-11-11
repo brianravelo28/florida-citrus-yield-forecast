@@ -3,11 +3,14 @@ Fetch US citrus data by fruit and state from USDA NASS QuickStats (survey data,
 state level, 1990-2026): bearing acres, yield, price received and value of
 production, for oranges, grapefruit, tangerines, lemons and tangelos.
 
-Output: data/citrus_by_state.csv, one row per fruit, state, year and measure.
-A value NASS withheld or did not publish is left blank with a note; nothing is
-estimated or filled in, and no value is ever changed. After fetching, the script
-prints a sanity report (gaps, blanks, and yields or prices far from their own
-series' median) so odd values can be checked against NASS's own publications
+Output: data/citrus_by_state.csv, one row per fruit, state, year and measure,
+and data/citrus_totals_by_state.csv, NASS's own state totals across all citrus
+(QuickStats commodity CITRUS TOTALS: bearing acres and value of production,
+2008 on). A value NASS withheld or did not publish is left blank with a note;
+nothing is estimated or filled in, and no value is ever changed. After
+fetching, the script prints a sanity report (gaps, blanks, and yields or prices
+far from their own series' median) and a comparison of the fruit values with
+NASS's totals, so odd values can be checked against NASS's own publications
 before they are charted.
 
 Needs NASS_KEY; a failed request stops the run and writes nothing.
@@ -101,6 +104,16 @@ def fetch_series(fruit, stat, unit, period, util):
     return df
 
 
+def parse_value(raw, label):
+    """One QuickStats Value string -> (number or NaN, note). A suppression code keeps its reason."""
+    raw = str(raw).strip()
+    note = SUPPRESSED.get(raw, "")
+    try:
+        return (float(raw.replace(",", "")) if not note else float("nan")), note
+    except ValueError:
+        raise FetchError(f"{label}: unexpected value {raw!r}")
+
+
 def build_table():
     records = []
     for fruit in FRUITS:
@@ -112,12 +125,7 @@ def build_table():
             if df.duplicated(["state_alpha", "year"]).any():
                 raise FetchError(f"{fruit} {measure}: more than one total row for a state-year")
             for _, r in df.iterrows():
-                raw = str(r["Value"]).strip()
-                note = SUPPRESSED.get(raw, "")
-                try:
-                    value = float(raw.replace(",", "")) if not note else float("nan")
-                except ValueError:
-                    raise FetchError(f"{fruit} {measure} {r['state_alpha']} {r['year']}: unexpected value {raw!r}")
+                value, note = parse_value(r["Value"], f"{fruit} {measure} {r['state_alpha']} {r['year']}")
                 year = int(r["year"])
                 records.append({
                     "fruit": fruit.title(), "state": r["state_alpha"], "year": year, "measure": measure,
@@ -137,6 +145,60 @@ def build_table():
         print(f"  [NOTE] dropped {len(after)} rows after {END_YEAR} (NASS forecasts for the coming season): "
               f"years {sorted(after['year'].unique())}, measures {sorted(after['measure'].unique())}")
     return out[out["year"] <= END_YEAR].reset_index(drop=True)
+
+
+TOTALS_COMMODITY = "CITRUS TOTALS"
+TOTALS_MEASURES = ("bearing_acres", "value_of_production_usd")
+TOTALS_FILE = "data/citrus_totals_by_state.csv"
+
+
+def build_totals():
+    """NASS's own state totals across all citrus (acres and value), one row per state, year and measure.
+
+    QuickStats publishes them for 2008 on. Same filters and the same handling of withheld values and
+    forecast rows as the fruit table. Raises FetchError rather than return a partial table.
+    """
+    records = []
+    for measure in TOTALS_MEASURES:
+        stat, unit, period, util = MEASURES[measure]
+        df = fetch_series(TOTALS_COMMODITY, stat, unit, period, util)
+        if df.empty:
+            raise FetchError(f"{TOTALS_COMMODITY} {measure}: no rows")
+        if df.duplicated(["state_alpha", "year"]).any():
+            raise FetchError(f"{TOTALS_COMMODITY} {measure}: more than one total row for a state-year")
+        for _, r in df.iterrows():
+            value, note = parse_value(r["Value"], f"{TOTALS_COMMODITY} {measure} {r['state_alpha']} {r['year']}")
+            year = int(r["year"])
+            records.append({"state": r["state_alpha"], "year": year, "measure": measure, "value": value, "note": note,
+                            "status": "preliminary" if year in PRELIMINARY_YEARS else "reported"})
+        print(f"  [OK] {TOTALS_COMMODITY} {measure}: {df['state_alpha'].nunique()} states, {len(df)} rows")
+        time.sleep(0.2)
+    out = pd.DataFrame(records).sort_values(["measure", "state", "year"]).reset_index(drop=True)
+    return out[out["year"] <= END_YEAR].reset_index(drop=True)
+
+
+def totals_check(fruit_df, totals, tolerance=0.01):
+    """Compare the sum of the fruit values with NASS's own state total, state-year by state-year.
+
+    Prints how many agree exactly, which differ because a fruit value is blank (the sum is then
+    partial), and which differ although every fruit value is present. Changes nothing.
+    """
+    print("\n" + "=" * 60 + "\nFRUIT SUMS vs NASS STATE TOTALS\n" + "=" * 60)
+    for measure in TOTALS_MEASURES:
+        parts = fruit_df[(fruit_df["measure"] == measure)]
+        sums = parts.groupby(["state", "year"])["value"].agg(total="sum", blanks=lambda s: int(s.isna().sum())).reset_index()
+        m = totals[totals["measure"] == measure].merge(sums, on=["state", "year"], how="left")
+        m["diff"] = m["total"] - m["value"]
+        exact = (m["diff"].abs() < 1).sum()
+        partial = m[(m["diff"].abs() >= 1) & (m["blanks"] > 0)]
+        off = m[(m["diff"].abs() >= 1) & (m["blanks"] == 0)]
+        print(f"\n{measure}: {len(m)} state-years in NASS's totals; sum equals the total in {exact}; "
+              f"differs with a blank fruit value (partial sum) in {len(partial)}; differs with every fruit value present in {len(off)}")
+        if len(off):
+            off = off.assign(pct=(off["diff"] / off["value"] * 100).round(2))
+            print(off[["state", "year", "value", "total", "diff", "pct"]].to_string(index=False))
+            if (off["pct"].abs() > tolerance * 100).any():
+                print(f"  [CHECK] a difference above {tolerance:.0%}")
 
 
 def sanity_report(df, ratio=3.0):
@@ -197,13 +259,16 @@ def main():
     print("=" * 60 + "\nCITRUS BY STATE (USDA NASS, survey, 1990-%d)\n" % END_YEAR + "=" * 60)
     try:
         df = build_table()
+        totals = build_totals()
     except FetchError as e:
         print(f"\n[FAILED] {e}\nNothing was written; existing data files are unchanged.")
         sys.exit(1)
     df.to_csv("data/citrus_by_state.csv", index=False)
-    print(f"\n[OK] Saved data/citrus_by_state.csv ({len(df)} rows)")
+    totals.to_csv(TOTALS_FILE, index=False)
+    print(f"\n[OK] Saved data/citrus_by_state.csv ({len(df)} rows) and {TOTALS_FILE} ({len(totals)} rows)")
     sanity_report(df)
     consistency_check(df)
+    totals_check(df, totals)
 
 
 if __name__ == "__main__":
