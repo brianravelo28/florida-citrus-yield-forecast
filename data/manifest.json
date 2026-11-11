@@ -1,0 +1,20 @@
+{
+  "data/citrus_by_state.csv": {
+    "pulled": "2026-11-10",
+    "rows": 2483,
+    "sha256": "7b4b8314a4ae814329fea7e181212964849055c2e7b6a20ef32f10c476c5f819",
+    "source": "USDA NASS QuickStats, survey, state level"
+  },
+  "data/citrus_totals_by_state.csv": {
+    "pulled": "2026-11-10",
+    "rows": 152,
+    "sha256": "ef201f11f052916ca5b49efcd1f2bd59ce85d075104e975d5b25dc0b7cb18c01",
+    "source": "USDA NASS QuickStats, CITRUS TOTALS, state level"
+  },
+  "data/cpi_u_monthly.csv": {
+    "pulled": "2026-11-10",
+    "rows": 445,
+    "sha256": "ba52dc5dc55429c9ea9199c616404ea2bbc6b3acc2d97c1c0c632cc2a835fef1",
+    "source": "US Bureau of Labor Statistics, CPI-U all items, series CUUR0000SA0"
+  }
+}

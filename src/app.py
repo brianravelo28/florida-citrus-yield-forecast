@@ -3,18 +3,33 @@ Plotly Dash app: the US citrus industry by fruit and state (acreage, yield,
 price and value of production, 1990-2026), from USDA NASS state surveys.
 Descriptive only; no model, no forecast.
 
-Tabs: Industry Overview, By Fruit, By State.
+Tabs: Industry Overview, By Fruit, By State. Every chart has a collapsed "About this chart" section
+(what it shows, definitions, scope, caveats, tips) and a count of the NASS values behind it.
+`/healthz` and `/debugz` are for the host (see docs/METHODOLOGY.md, Deployment notes).
 """
+
+import datetime
+import importlib.metadata
+import os
+import platform
+import sys
+import time
 
 import dash
 from dash import dcc, html, Input, Output
+from flask import jsonify
 import plotly.graph_objects as go
 import pandas as pd
 
 try:                                  # gunicorn src.app:server and run_dashboard.py import it as a package
     from src import citrus_data as cd
+    from src import manifest
 except ImportError:                   # python src/app.py
     import citrus_data as cd
+    import manifest
+
+STARTED = time.time()
+STARTED_AT = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
 
 # ---------------------------------------------------------------------------
 # Data (all committed CSVs; see docs/SCHEMA.md)
@@ -24,6 +39,16 @@ totals = cd.load_totals("data/citrus_totals_by_state.csv")      # NASS's own sta
 citrus_plot = cd.blank_conflicts(citrus)          # flagged yields drawn as gaps; the file is untouched
 conflicts = cd.yield_conflicts(citrus)
 TOTALS_FIRST_YEAR = int(totals["year"].min())
+cpi = cd.load_cpi("data/cpi_u_monthly.csv")                    # BLS CPI-U, for constant dollars
+FACTORS = cd.real_factors(cpi)                                 # nominal -> BASE_YEAR dollars, by season
+BASE_YEAR = cd.BASE_YEAR
+
+PULLED = {k: v["pulled"] for k, v in manifest.load("data/manifest.json").items()}      # when each file was pulled
+SOURCE_NOTICE = (
+    f"Data: USDA National Agricultural Statistics Service (NASS), Quick Stats, pulled {PULLED['data/citrus_by_state.csv']}; "
+    f"US Bureau of Labor Statistics (BLS), consumer price index CPI-U, retrieved {PULLED['data/cpi_u_monthly.csv']}. "
+    "This product uses the NASS API but is not endorsed or certified by NASS. BLS.gov cannot vouch for the data or "
+    "analyses derived from these data after the data have been retrieved from BLS.gov.")
 
 LATEST_YEAR = int(citrus["year"].max())
 LATEST_PRELIM = bool((citrus.loc[citrus["year"] == LATEST_YEAR, "status"] == "preliminary").all())
@@ -35,10 +60,47 @@ FRUIT_COLORS = {"Oranges": "#fd7e14", "Grapefruit": "#e8537a", "Tangerines": "#f
 COLORS = {'background': '#f8f9fa', 'text': '#212529', 'primary': '#0d6efd', 'success': '#198754',
           'warning': '#ffc107', 'danger': '#dc3545'}
 
-NOMINAL_NOTE = ("Dollar values are nominal (not adjusted for inflation) and use NASS's packinghouse-door "
+MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+          "November", "December"]
+
+
+def _cpi_gap_sentence():
+    """Names each month BLS did not publish and the season whose average therefore uses 11 months."""
+    parts = [f"{MONTHS[int(r.month) - 1]} {int(r.year)} (season {int(r.year) + (r.month >= 10)})" for r in cpi[cpi["cpi"].isna()].itertuples()]
+    return f"BLS published no CPI-U value for {', '.join(parts)}; that season's average uses its other 11 months." if parts else ""
+
+
+# ---------------------------------------------------------------------------
+# Wording shared by the charts: definitions, and the notes every chart of a kind carries
+# ---------------------------------------------------------------------------
+DEF_BEARING = "Bearing acres are acres of citrus trees old enough to bear fruit."
+DEF_UTILIZED = ("Utilized production is the part of the crop that was used, sold fresh or processed, counted in boxes; "
+                "box weights differ by fruit and state.")
+DEF_VALUE = ("Value of production is the utilized crop valued at the packinghouse-door price, the price at the point of "
+             "first sale after packing costs are taken out.")
+DEF_PRICE = "Price per box is NASS's marketing-year average price at the packinghouse door."
+DEF_YIELD = "Yield is utilized boxes per bearing acre."
+
+NOMINAL_NOTE = ("Dollar values are as reported by NASS, not adjusted for inflation, and use NASS's packinghouse-door "
                 "equivalent basis.")
+REAL_NOTE = (f"Dollar values are in {BASE_YEAR} dollars: each season's value is multiplied by the consumer price index "
+             f"(BLS CPI-U, all items) for the {BASE_YEAR} season divided by the index for its own season, each averaged "
+             f"over October to September. The index measures general purchasing power, not citrus prices. Values use "
+             f"NASS's packinghouse-door equivalent basis.")
+DOLLAR_METRICS = ("value_of_production_usd", "price_usd_per_box")
 PRELIM_NOTE = (f"{LATEST_YEAR} is NASS's preliminary estimate for the season ending that year and is revised a "
                "year later. Seasons are labeled by their end year (2023 is the 2022-23 season).")
+TOTALS_NOTE = (f"Totals use NASS's own published state totals from {TOTALS_FIRST_YEAR} and, before that, the sum of "
+               "the fruit values (the two agree where both exist; see the Methodology).")
+HINTS = ["Drag to zoom into part of the chart; double-click the chart to reset the view.",
+         "Click a legend entry to hide that series; double-click it to isolate it."]
+
+
+def dollar_notes(real):
+    notes = [REAL_NOTE if real else NOMINAL_NOTE]
+    if real:
+        notes.append(_cpi_gap_sentence())
+    return [n for n in notes if n]
 
 
 def _state(code):
@@ -57,7 +119,6 @@ value_by_state = cd.combined_total(citrus, totals, "value_of_production_usd", by
 
 ACRES_PEAK_YEAR, ACRES_PEAK = int(acres_total.idxmax()), float(acres_total.max())
 ACRES_LATEST = float(acres_total.loc[LATEST_YEAR])
-VALUE_PEAK_YEAR, VALUE_PEAK = int(value_total.idxmax()), float(value_total.max())
 ACRES_FALL = round(-cd.pct_change(ACRES_LATEST, ACRES_PEAK))
 
 # Each state's share of the US value of production in the same year. Shares compare states with
@@ -67,19 +128,28 @@ FIRST_VALUE_YEAR = 1990
 SHARE_FL_FIRST, SHARE_FL_LAST = value_share.loc[FIRST_VALUE_YEAR, "FL"], value_share.loc[LATEST_YEAR, "FL"]
 SHARE_CA_FIRST, SHARE_CA_LAST = value_share.loc[FIRST_VALUE_YEAR, "CA"], value_share.loc[LATEST_YEAR, "CA"]
 
+# Where the acres went: Florida's decline against California's near-constant acreage (no acres moved to California)
+_fl_acres, _ca_acres = acres_by_state["FL"], acres_by_state["CA"]
+FL_ACRES_FALL = round(-cd.pct_change(_fl_acres.loc[LATEST_YEAR], _fl_acres.loc[ACRES_PEAK_YEAR]))
+FL_LOSS_SHARE = round((_fl_acres.loc[ACRES_PEAK_YEAR] - _fl_acres.loc[LATEST_YEAR]) / (ACRES_PEAK - ACRES_LATEST) * 100)
+CA_BELOW_PEAK = round(-cd.pct_change(_ca_acres.loc[LATEST_YEAR], _ca_acres.max()))
+
 HEADLINE = (
-    f"US citrus bearing acreage fell {ACRES_FALL}% from its {ACRES_PEAK_YEAR} peak to {LATEST_YEAR}{PRELIM_TAG}, and the "
-    f"industry moved west: Florida's share of the value of production fell from {SHARE_FL_FIRST:.0f}% in "
-    f"{FIRST_VALUE_YEAR} to {SHARE_FL_LAST:.0f}% in {LATEST_YEAR}, while California's rose from "
+    f"US citrus bearing acreage fell {ACRES_FALL}% from its {ACRES_PEAK_YEAR} peak to {LATEST_YEAR}{PRELIM_TAG}, and "
+    f"{FL_LOSS_SHARE}% of the acres lost were in Florida, where acreage fell {FL_ACRES_FALL}% while California's is "
+    f"{CA_BELOW_PEAK}% below its own peak. Over the same period Florida's share of the value of production fell from "
+    f"{SHARE_FL_FIRST:.0f}% in {FIRST_VALUE_YEAR} to {SHARE_FL_LAST:.0f}% in {LATEST_YEAR}, while California's rose from "
     f"{SHARE_CA_FIRST:.0f}% to {SHARE_CA_LAST:.0f}%."
 )
 
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, title="US Citrus Industry Dashboard")
 
 KPI_STYLE = {'textAlign': 'center', 'padding': '20px', 'backgroundColor': 'white', 'borderRadius': '8px',
              'boxShadow': '0 1px 3px rgba(0,0,0,0.1)', 'margin': '10px'}
 CARD_STYLE = {'padding': '20px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderRadius': '8px'}
-FOOTNOTE_STYLE = {'fontSize': '12px', 'color': '#888', 'marginTop': '10px'}
+COUNT_STYLE = {'fontSize': '12px', 'color': '#666', 'margin': '8px 2px 0'}
+ABOUT_STYLE = {'margin': '6px 2px 0', 'fontSize': '13px', 'color': '#666'}
+SMALL_N = 30                                    # a chart resting on fewer values than this carries an asterisk
 
 
 def create_kpi_card(label, value, unit="", color=COLORS['primary']):
@@ -90,13 +160,26 @@ def create_kpi_card(label, value, unit="", color=COLORS['primary']):
     ], style=KPI_STYLE)
 
 
-CHART_HINT_ZOOM = "Drag to zoom into part of the chart; double-click the chart to reset the view."
-CHART_HINT_LEGEND = " Click a legend entry to hide that series; double-click it to isolate it."
+def count_line(n):
+    """The number of NASS values behind a chart; under SMALL_N it carries an asterisk with a tooltip."""
+    parts = [f"n = {n:,} NASS values behind this chart"]
+    if n < SMALL_N:
+        parts.append(html.Abbr("*", title=f"Fewer than {SMALL_N} values: read the pattern with caution.",
+                               style={'textDecoration': 'none', 'cursor': 'help', 'marginLeft': '2px', 'fontWeight': 'bold'}))
+    return html.P(parts, style=COUNT_STYLE)
 
 
-def chart_hint(legend=True):
-    text = CHART_HINT_ZOOM + (CHART_HINT_LEGEND if legend else "")
-    return html.P(text, style={'margin': '4px 2px 0', 'color': '#888', 'fontSize': '13px', 'fontStyle': 'italic'})
+def about(items):
+    """Collapsed 'About this chart' section: every explanatory line for the chart, as italic bullets."""
+    return html.Details([
+        html.Summary("About this chart", style={'cursor': 'pointer', 'fontWeight': 'bold'}),
+        html.Ul([html.Li(html.I(i)) for i in items if i], style={'margin': '6px 0 0', 'paddingLeft': '22px'}),
+    ], style=ABOUT_STYLE)
+
+
+def chart_footer(n, items):
+    """What sits under a chart: its collapsed 'About this chart' section, then the count behind it."""
+    return html.Div([about(items), count_line(n)])
 
 
 # ---------------------------------------------------------------------------
@@ -130,17 +213,21 @@ def stacked_bars(total_by, title, ytitle, scale, colors, labels, hover_fmt, tota
     return fig
 
 
-TOTALS_NOTE = (f" Totals use NASS's own published state totals from {TOTALS_FIRST_YEAR} and, before that, the sum of "
-               "the fruit values (the two agree where both exist; see the Methodology).")
-
-
 def gap_note(total, scope_label):
     """Sentence naming the years in which a total is left empty because NASS published no value for a part."""
     years = cd.gap_years(total)
     if not years:
         return ""
-    return (f" {scope_label} is left empty in {cd.year_ranges(years)}: NASS published no value for at least one fruit "
+    return (f"{scope_label} is left empty in {cd.year_ranges(years)}: NASS published no value for at least one fruit "
             "and state that year and no state total either, and a partial total would understate it.")
+
+
+def _combined_count(measure, frame):
+    """NASS values behind a chart drawn from `combined_total`: the fruit rows before NASS's own totals begin and
+    those totals from then on, in the years the chart actually draws."""
+    years = list(frame.dropna(how="all").index)
+    return (cd.count_values(citrus, measure, years=[y for y in years if y < TOTALS_FIRST_YEAR])
+            + cd.count_totals(totals, measure, years=years))
 
 
 def build_acres_by_state():
@@ -148,29 +235,59 @@ def build_acres_by_state():
                         STATE_COLORS, _state, ",.0f")
 
 
+def acres_footer():
+    return chart_footer(_combined_count("bearing_acres", acres_by_state), [
+        "Stacked bars of US bearing acres by state, one bar per season. " + DEF_BEARING,
+        PRELIM_NOTE, TOTALS_NOTE, gap_note(acres_by_state, "The acreage total")] + HINTS)
+
+
 def _value_by_fruit_frame():
     by_fruit = cd.complete_total(citrus, "value_of_production_usd", by="fruit")
     return by_fruit[[f for f in cd.FRUIT_ORDER if f in by_fruit.columns]]
 
 
-def build_value_by_fruit():
-    return stacked_bars(_value_by_fruit_frame(), "Value of Production, by Fruit",
-                        "Value of production ($ million, nominal)", 1e6, FRUIT_COLORS, lambda f: f, ",.0f",
-                        total_line=value_total_all, line_name="US total")
+def _adjust(obj, real):
+    """Dollar values as reported, or in constant BASE_YEAR dollars."""
+    return cd.to_real(obj, FACTORS) if real else obj
 
 
-def value_by_fruit_note():
-    """Footnote for the value-by-fruit chart: why stacks are empty where the total line is not."""
+def dollar_axis(real):
+    return f"Value of production ($ million, {BASE_YEAR} dollars)" if real else "Value of production ($ million, as reported)"
+
+
+def build_value_by_fruit(real=False):
+    return stacked_bars(_adjust(_value_by_fruit_frame(), real), "Value of Production, by Fruit", dollar_axis(real), 1e6,
+                        FRUIT_COLORS, lambda f: f, ",.0f", total_line=_adjust(value_total_all, real), line_name="US total")
+
+
+def value_by_fruit_notes(real=False):
+    """Bullets for the value-by-fruit chart: what it shows, why stacks are empty where the line is not, the peak."""
+    notes = ["Stacked bars of the value of production by fruit, with the US total as a line. " + DEF_VALUE] + dollar_notes(real)
+    if not real:
+        notes.append("Because prices rise over time, dollars from different decades should not be compared as if they "
+                     "bought the same amount; switch to constant dollars above, or use the share chart.")
     stack_gaps = cd.gap_years(_value_by_fruit_frame())
-    note = ""
     if stack_gaps:
-        note = (f" The fruit stacks are empty in {cd.year_ranges(stack_gaps)}: NASS withheld the value of at least one "
-                "fruit and state, and a partial stack would understate it.")
-    note += (f" The line is the US total: NASS's published state totals from {TOTALS_FIRST_YEAR} (which include the "
-             f"values withheld at the fruit level) and the sum of the fruit values before that. The nominal total "
-             f"peaked in {VALUE_PEAK_YEAR} at ${VALUE_PEAK / 1e9:.2f} billion.")
-    note += gap_note(value_total_all, "The line")
-    return note
+        notes.append(f"The fruit stacks are empty in {cd.year_ranges(stack_gaps)}: NASS withheld the value of at least one "
+                     "fruit and state, and a partial stack would understate it.")
+    notes.append(f"The line is the US total: NASS's published state totals from {TOTALS_FIRST_YEAR} (which include the "
+                 f"values withheld at the fruit level) and the sum of the fruit values before that.")
+    total = _adjust(value_total_all, real).dropna()
+    peak_year, peak = int(total.idxmax()), float(total.max())
+    unit = f"{BASE_YEAR} dollars" if real else "dollars as reported"
+    peak_note = f"In {unit} the total is highest in {peak_year} (${peak / 1e9:.2f} billion)"
+    if peak_year == int(total.index.min()):
+        peak_note += ", the first year of the data, so an earlier year could be higher"
+    peak_note += f"; in {LATEST_YEAR}{PRELIM_TAG} it is ${total.loc[LATEST_YEAR] / 1e9:.2f} billion, {-cd.pct_change(total.loc[LATEST_YEAR], peak):.0f}% lower."
+    notes += [peak_note, gap_note(value_total_all, "The line"), PRELIM_NOTE] + HINTS
+    return notes
+
+
+def value_by_fruit_count():
+    """Fruit values in the years the stacks are drawn, plus the NASS state totals behind the line."""
+    stack_years = list(_value_by_fruit_frame().dropna(how="all").index)
+    return (cd.count_values(citrus, "value_of_production_usd", years=stack_years)
+            + cd.count_totals(totals, "value_of_production_usd", years=list(value_total_all.dropna().index)))
 
 
 def build_value_share_by_state():
@@ -178,6 +295,13 @@ def build_value_share_by_state():
                        STATE_COLORS, _state, ".0f")
     fig.update_yaxes(range=[0, 100])
     return fig
+
+
+def share_footer():
+    return chart_footer(_combined_count("value_of_production_usd", value_by_state), [
+        "Stacked bars of each state's share of the US value of production, one bar per season, so the bars compare "
+        "states with each other and are not affected by inflation. " + DEF_VALUE,
+        PRELIM_NOTE, TOTALS_NOTE, gap_note(value_by_state, "The value total")] + HINTS)
 
 
 # ---------------------------------------------------------------------------
@@ -188,9 +312,23 @@ METRICS = {
     "yield_boxes_per_acre": ("Yield (boxes per acre)", ",.0f"),
     "yield_pct_of_peak": ("Yield, % of each state's own peak", ".0f"),
     "production_boxes": ("Utilized production (million boxes)", ",.1f"),
-    "value_of_production_usd": ("Value of production ($ million, nominal)", ",.0f"),
+    "value_of_production_usd": ("Value of production ($ million)", ",.0f"),
     "price_usd_per_box": ("Price per box ($, packinghouse-door)", ",.2f"),
 }
+METRIC_DEFS = {"bearing_acres": DEF_BEARING, "yield_boxes_per_acre": DEF_YIELD, "yield_pct_of_peak": DEF_YIELD +
+               " Each state's line is divided by that state's own highest yield, so states with different box weights compare.",
+               "production_boxes": DEF_UTILIZED, "value_of_production_usd": DEF_VALUE, "price_usd_per_box": DEF_PRICE}
+
+
+def metric_label(metric, real):
+    """Axis and title label for a measure; the dollar measures say which dollars."""
+    label = METRICS[metric][0]
+    if metric not in DOLLAR_METRICS:
+        return label
+    which = f"{BASE_YEAR} dollars" if real else "as reported"
+    return label[:-1] + f", {which})"
+
+
 FRUITS = [f for f in cd.FRUIT_ORDER if f in set(citrus["fruit"])]
 STATES = [s for s in cd.STATE_NAMES if s in set(citrus["state"])]
 
@@ -198,11 +336,21 @@ app.layout = html.Div([
     html.Div([
         html.H1("US Citrus Industry: Acreage, Yield and Value by State", style={
             'color': COLORS['primary'], 'marginBottom': '10px', 'fontSize': '32px', 'fontWeight': 'bold'}),
-        html.P("How has the US citrus industry changed since 1990, and where did it go?",
+        html.P("How has the US citrus industry changed since 1990, and which states account for the change?",
                style={'color': '#333', 'margin': '0 0 6px', 'fontSize': '16px'}),
         html.P("For anyone following US agriculture, including analysts and students. Real USDA NASS "
                "data; descriptive only, with no model or forecast.",
-               style={'color': '#666', 'marginTop': '0', 'fontSize': '14px'})
+               style={'color': '#666', 'marginTop': '0', 'fontSize': '14px'}),
+        html.Div([
+            html.Label("Dollar values:", style={'fontWeight': 'bold', 'marginRight': '12px'}),
+            dcc.RadioItems(id='dollars', value='real', inline=True,
+                           options=[{'label': f"Constant {BASE_YEAR} dollars (inflation-adjusted)", 'value': 'real'},
+                                    {'label': "As reported by NASS (nominal)", 'value': 'nominal'}],
+                           inputStyle={'marginRight': '5px', 'marginLeft': '15px'}),
+            html.Span("Applies to the value and price charts; acreage and shares are not affected.",
+                      style={'color': '#888', 'fontSize': '12px', 'marginLeft': '15px'}),
+        ], style={'display': 'flex', 'alignItems': 'center', 'flexWrap': 'wrap', 'marginTop': '10px'}),
+        html.P(SOURCE_NOTICE, id='source-notice', style={'color': '#888', 'fontSize': '12px', 'margin': '12px 0 0'}),
     ], style={'padding': '30px', 'backgroundColor': 'white', 'marginBottom': '20px', 'borderBottom': '2px solid #e0e0e0'}),
 
     dcc.Tabs(id="tabs", value="tab-1", children=[
@@ -229,19 +377,10 @@ app.layout = html.Div([
                     ], style={'display': 'flex', 'flexWrap': 'wrap', 'justifyContent': 'space-around'})
                 ], style=CARD_STYLE),
 
-                html.Div([dcc.Graph(figure=build_acres_by_state()), chart_hint(),
-                          html.P(PRELIM_NOTE + TOTALS_NOTE + gap_note(acres_by_state, "The acreage total"),
-                                 style=FOOTNOTE_STYLE)], style=CARD_STYLE),
-                html.Div([dcc.Graph(figure=build_value_share_by_state()), chart_hint(),
-                          html.P("Each bar is the share of that year's US value of production, so it compares states "
-                                 "with each other and is not affected by inflation." + TOTALS_NOTE
-                                 + gap_note(value_by_state, "The value total"),
-                                 style=FOOTNOTE_STYLE)], style=CARD_STYLE),
-                html.Div([dcc.Graph(figure=build_value_by_fruit()), chart_hint(),
-                          html.P(NOMINAL_NOTE + " Because they are not adjusted, dollar values should not be compared "
-                                 "across decades as if they bought the same amount; use the share chart above for that."
-                                 + value_by_fruit_note(),
-                                 style=FOOTNOTE_STYLE)], style={**CARD_STYLE, 'marginBottom': '0'}),
+                html.Div([dcc.Graph(figure=build_acres_by_state()), acres_footer()], style=CARD_STYLE),
+                html.Div([dcc.Graph(figure=build_value_share_by_state()), share_footer()], style=CARD_STYLE),
+                html.Div([dcc.Graph(id='value-fruit-chart'), html.Div(id='value-fruit-notes')],
+                         style={**CARD_STYLE, 'marginBottom': '0'}),
             ], style={'padding': '20px'})
         ]),
 
@@ -260,7 +399,7 @@ app.layout = html.Div([
                                      style={'width': '340px', 'display': 'inline-block', 'verticalAlign': 'middle'}),
                     ], style={'display': 'flex', 'alignItems': 'center', 'flexWrap': 'wrap', 'gap': '6px'}),
                 ], style={'padding': '15px 20px', 'backgroundColor': 'white', 'borderRadius': '8px', 'marginBottom': '20px'}),
-                html.Div([dcc.Graph(id='fruit-chart'), chart_hint(), html.Div(id='fruit-notes')], style=CARD_STYLE),
+                html.Div([dcc.Graph(id='fruit-chart'), html.Div(id='fruit-notes')], style=CARD_STYLE),
             ], style={'padding': '20px'})
         ]),
 
@@ -274,8 +413,8 @@ app.layout = html.Div([
                                  style={'width': '200px', 'display': 'inline-block', 'verticalAlign': 'middle'}),
                 ], style={'padding': '15px 20px', 'backgroundColor': 'white', 'borderRadius': '8px', 'marginBottom': '20px',
                           'display': 'flex', 'alignItems': 'center'}),
-                html.Div([dcc.Graph(id='state-acres-chart'), chart_hint(), html.Div(id='state-acres-note')], style=CARD_STYLE),
-                html.Div([dcc.Graph(id='state-value-chart'), chart_hint(), html.Div(id='state-value-note')], style=CARD_STYLE),
+                html.Div([dcc.Graph(id='state-acres-chart'), html.Div(id='state-acres-note')], style=CARD_STYLE),
+                html.Div([dcc.Graph(id='state-value-chart'), html.Div(id='state-value-note')], style=CARD_STYLE),
             ], style={'padding': '20px'})
         ]),
 
@@ -286,8 +425,10 @@ app.layout = html.Div([
 # ---------------------------------------------------------------------------
 # Callbacks: By Fruit
 # ---------------------------------------------------------------------------
-def _fruit_series(fruit, metric):
-    """Per-state series for one fruit and measure, as {state: DataFrame(year, value, status)}."""
+def _fruit_series(fruit, metric, real=False):
+    """Per-state series for one fruit and measure, as {state: DataFrame(year, value, status)}.
+
+    The dollar measures are in constant BASE_YEAR dollars when `real` is set."""
     base = "yield_boxes_per_acre" if metric == "yield_pct_of_peak" else metric
     d = citrus_plot[(citrus_plot["fruit"] == fruit) & (citrus_plot["measure"] == base)]
     out = {}
@@ -297,16 +438,18 @@ def _fruit_series(fruit, metric):
             g["value"] = g["value"] / g["value"].max() * 100
         elif metric in ("production_boxes", "value_of_production_usd"):
             g["value"] = g["value"] / 1e6
+        if real and metric in DOLLAR_METRICS:
+            g["value"] = g["value"] * g["year"].map(FACTORS)
         out[st] = g
     return out
 
 
-def _fruit_notes(fruit, metric):
-    """Footnotes that say exactly which values are missing or left out, and why."""
+def _fruit_notes(fruit, metric, real=False):
+    """Bullets for a By Fruit chart: what it shows, which values are missing or left out, and why."""
     base = "yield_boxes_per_acre" if metric == "yield_pct_of_peak" else metric
-    notes = []
-    if metric == "value_of_production_usd":
-        notes.append(NOMINAL_NOTE)
+    notes = [f"One line per state that grows {fruit.lower()}, one point per season. {METRIC_DEFS[metric]}"]
+    if metric in DOLLAR_METRICS:
+        notes += dollar_notes(real)
     if metric.startswith("yield"):
         notes.append("Box weights differ by state, so compare changes over time and each state's share of its own peak, "
                      "not raw boxes per acre across states.")
@@ -333,17 +476,19 @@ def _fruit_notes(fruit, metric):
                          f"{r['published']:.0f} boxes per acre, but its own utilized production and bearing acres in the "
                          f"same database imply about {r['implied']:.0f}. Shown as a gap, not corrected; the published "
                          f"value stays in the data file. {cite}".strip())
-    return html.Div([html.P(n, style=FOOTNOTE_STYLE) for n in notes])
+    return notes + HINTS
 
 
 @app.callback(
     [Output('fruit-chart', 'figure'), Output('fruit-notes', 'children')],
-    [Input('fruit-dropdown', 'value'), Input('metric-dropdown', 'value')]
+    [Input('fruit-dropdown', 'value'), Input('metric-dropdown', 'value'), Input('dollars', 'value')]
 )
-def update_fruit(fruit, metric):
-    label, fmt = METRICS[metric]
-    fig = go.Figure()
-    for st, g in _fruit_series(fruit, metric).items():
+def update_fruit(fruit, metric, dollars="real"):
+    real = dollars == "real"
+    label, fmt = metric_label(metric, real), METRICS[metric][1]
+    fig, n = go.Figure(), 0
+    for st, g in _fruit_series(fruit, metric, real).items():
+        n += int(g["value"].notna().sum())
         symbols = ["circle-open" if s == "preliminary" else "circle" for s in g["status"]]
         fig.add_trace(go.Scatter(
             x=g["year"], y=g["value"], mode="lines+markers", connectgaps=False, name=_state(st),
@@ -354,20 +499,24 @@ def update_fruit(fruit, metric):
     fig.update_layout(title=f"{fruit}: {label}", xaxis_title="Season (end year)", yaxis_title=label, height=480,
                       template="plotly_white", hovermode="x unified")
     _shade_latest(fig)
-    return fig, _fruit_notes(fruit, metric)
+    return fig, chart_footer(n, _fruit_notes(fruit, metric, real))
 
 
 # ---------------------------------------------------------------------------
 # Callbacks: By State
 # ---------------------------------------------------------------------------
-def _state_stack(state, measure, scale, ytitle, title, hover_fmt, note_prefix):
+def _state_stack(state, measure, scale, ytitle, title, hover_fmt, lead_notes, real=False):
     by_fruit = cd.complete_total(citrus, measure, by="fruit", state=state)
     by_fruit = by_fruit[[f for f in cd.FRUIT_ORDER if f in by_fruit.columns]]
     state_total = cd.combined_total(citrus, totals, measure, state=state)
+    n = (cd.count_values(citrus, measure, years=list(by_fruit.dropna(how="all").index), state=state)
+         + cd.count_totals(totals, measure, years=list(state_total.dropna().index), state=state))
+    if real and measure == "value_of_production_usd":
+        by_fruit, state_total = _adjust(by_fruit, True), _adjust(state_total, True)
     fig = stacked_bars(by_fruit, title, ytitle, scale, FRUIT_COLORS, lambda f: f, hover_fmt,
                        total_line=state_total, line_name=f"{_state(state)} total")
     years = cd.incomplete_years(citrus, measure, state)
-    notes = [note_prefix] if note_prefix else []
+    notes = list(lead_notes)
     if LATEST_PRELIM:
         notes.append(PRELIM_NOTE)
     if years:
@@ -375,25 +524,100 @@ def _state_stack(state, measure, scale, ytitle, title, hover_fmt, note_prefix):
                      f"least one fruit in {_state(state)}, and a partial stack would understate it.")
     notes.append(f"The line is the {_state(state)} total: NASS's published state total from {TOTALS_FIRST_YEAR} and, "
                  f"before that, the sum of the fruit values.")
-    return fig, html.Div([html.P(n, style=FOOTNOTE_STYLE) for n in notes])
+    return fig, chart_footer(n, notes + HINTS)
 
 
 @app.callback(
     [Output('state-acres-chart', 'figure'), Output('state-acres-note', 'children'),
      Output('state-value-chart', 'figure'), Output('state-value-note', 'children')],
-    Input('state-dropdown', 'value')
+    [Input('state-dropdown', 'value'), Input('dollars', 'value')]
 )
-def update_state(state):
+def update_state(state, dollars="real"):
+    real = dollars == "real"
     name = _state(state)
     a_fig, a_note = _state_stack(state, "bearing_acres", 1e3, "Bearing acres (thousands)",
-                                 f"{name}: Bearing Acres, by Fruit", ",.1f", "")
-    v_fig, v_note = _state_stack(state, "value_of_production_usd", 1e6, "Value of production ($ million, nominal)",
-                                 f"{name}: Value of Production, by Fruit", ",.0f", NOMINAL_NOTE)
+                                 f"{name}: Bearing Acres, by Fruit", ",.1f",
+                                 [f"Stacked bars of {name}'s bearing acres by fruit, one bar per season. " + DEF_BEARING])
+    v_fig, v_note = _state_stack(state, "value_of_production_usd", 1e6, dollar_axis(real),
+                                 f"{name}: Value of Production, by Fruit", ",.0f",
+                                 [f"Stacked bars of {name}'s value of production by fruit, one bar per season. " + DEF_VALUE]
+                                 + dollar_notes(real), real)
     return a_fig, a_note, v_fig, v_note
+
+
+# ---------------------------------------------------------------------------
+# Callback: Industry Overview value chart (follows the dollar toggle)
+# ---------------------------------------------------------------------------
+@app.callback(
+    [Output('value-fruit-chart', 'figure'), Output('value-fruit-notes', 'children')],
+    Input('dollars', 'value')
+)
+def update_value_by_fruit(dollars="real"):
+    real = dollars == "real"
+    return build_value_by_fruit(real), chart_footer(value_by_fruit_count(), value_by_fruit_notes(real))
+
+
+# ---------------------------------------------------------------------------
+# Host endpoints: /healthz (liveness) and /debugz (what is running and how much memory it uses)
+# ---------------------------------------------------------------------------
+def _memory_mb():
+    """Resident memory of this process in MB, and what the figure is: current (Linux /proc) or peak (resource)."""
+    try:
+        with open("/proc/self/status") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    return round(int(line.split()[1]) / 1024, 1), "current resident set (VmRSS)"
+    except OSError:
+        pass
+    try:
+        import resource
+        peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss          # kilobytes on Linux, bytes on macOS
+        return round(peak / (1024 * 1024 if sys.platform == "darwin" else 1024), 1), "peak resident set (ru_maxrss)"
+    except ImportError:
+        return None, "not available on this platform"
+
+
+def _version(package):
+    try:
+        return importlib.metadata.version(package)
+    except importlib.metadata.PackageNotFoundError:
+        return None
+
+
+def debug_info():
+    memory, memory_kind = _memory_mb()
+    return {
+        "status": "ok",
+        "started_at_utc": STARTED_AT,
+        "uptime_seconds": round(time.time() - STARTED),
+        "pid": os.getpid(),
+        "python": platform.python_version(),
+        "memory_mb": memory,
+        "memory_kind": memory_kind,
+        "packages": {p: _version(p) for p in ("dash", "plotly", "pandas", "numpy", "gunicorn")},
+        "data": {"citrus_rows": len(citrus), "totals_rows": len(totals), "cpi_months": len(cpi),
+                 "latest_season": LATEST_YEAR, "latest_season_preliminary": LATEST_PRELIM},
+    }
 
 
 # Expose Flask server for Gunicorn (Render, Heroku, etc.)
 server = app.server
+
+
+@server.route("/healthz")
+def healthz():
+    """Liveness for the host: answers 200 as soon as the app has loaded its data."""
+    response = jsonify({"status": "ok"})
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@server.route("/debugz")
+def debugz():
+    response = jsonify(debug_info())
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
 
 if __name__ == "__main__":
     print("[OK] Starting Dash app at http://127.0.0.1:8050")

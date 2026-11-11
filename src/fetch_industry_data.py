@@ -23,6 +23,11 @@ import time
 import pandas as pd
 import requests
 
+try:                                   # python src/fetch_industry_data.py (src/ is on the path)
+    import manifest
+except ImportError:                    # imported as a package
+    from src import manifest
+
 
 START_YEAR, END_YEAR = 1990, 2026
 
@@ -265,6 +270,8 @@ def main():
         sys.exit(1)
     df.to_csv("data/citrus_by_state.csv", index=False)
     totals.to_csv(TOTALS_FILE, index=False)
+    manifest.record("data/citrus_by_state.csv", "USDA NASS QuickStats, survey, state level", len(df))
+    manifest.record(TOTALS_FILE, "USDA NASS QuickStats, CITRUS TOTALS, state level", len(totals))
     print(f"\n[OK] Saved data/citrus_by_state.csv ({len(df)} rows) and {TOTALS_FILE} ({len(totals)} rows)")
     sanity_report(df)
     consistency_check(df)

@@ -41,6 +41,7 @@ MANIFEST
 
 # Data: the CSVs the app reads are committed (see docs/SCHEMA.md); other formats are not
 data/*.json
+!data/manifest.json
 data/*.xlsx
 *.parquet
 

@@ -104,12 +104,71 @@ def combined_total(df, totals, measure, by=None, state=None):
     return published.combine_first(base).sort_index()
 
 
+def count_values(df, measure, years=None, state=None, fruit=None):
+    """Number of published (non-blank) fruit-level NASS values of a measure, optionally in some years, state or fruit."""
+    d = df[(df["measure"] == measure) & df["value"].notna()]
+    if years is not None:
+        d = d[d["year"].isin(list(years))]
+    if state is not None:
+        d = d[d["state"] == state]
+    if fruit is not None:
+        d = d[d["fruit"] == fruit]
+    return int(len(d))
+
+
+def count_totals(totals, measure, years=None, state=None):
+    """Number of published NASS state totals of a measure, optionally in some years or one state."""
+    t = totals[(totals["measure"] == measure) & totals["value"].notna()]
+    if years is not None:
+        t = t[t["year"].isin(list(years))]
+    if state is not None:
+        t = t[t["state"] == state]
+    return int(len(t))
+
+
 def gap_years(total):
     """Years in which a total is blank. For a frame (one column per fruit or state) a gap year is one in
     which every column is blank, as `complete_total` blanks a whole year; a column that is blank because
     its series ended or has not started is not a gap."""
     blank = total.isna() if isinstance(total, pd.Series) else total.isna().all(axis=1)
     return sorted(int(y) for y in blank[blank].index)
+
+
+BASE_YEAR = 2025          # dollars are expressed in the prices of the 2025 season (Oct 2024 - Sep 2025)
+MIN_CPI_MONTHS = 11       # a season's CPI needs at least 11 of its 12 months (BLS published no October 2025 value)
+
+
+def load_cpi(path="data/cpi_u_monthly.csv"):
+    """Monthly CPI-U (all items, US city average, not seasonally adjusted) from BLS."""
+    return pd.read_csv(path)
+
+
+def season_cpi(cpi, min_months=MIN_CPI_MONTHS):
+    """Mean CPI-U over each citrus season's twelve months, indexed by the season's end year.
+
+    NASS labels a season by its end year, and the season's value is earned from the autumn before to
+    the following autumn, so season `y` uses October of `y - 1` to September of `y`. A season is NaN
+    unless all twelve months are in the file and at least `min_months` of them were published.
+    """
+    c = cpi.assign(m=cpi["year"] * 12 + cpi["month"] - 1)
+    out = {}
+    for y in range(int(cpi["year"].min()) + 1, int(cpi["year"].max()) + 1):
+        window = c[(c["m"] >= (y - 1) * 12 + 9) & (c["m"] <= y * 12 + 8)]
+        ok = len(window) == 12 and window["cpi"].notna().sum() >= min_months
+        out[y] = window["cpi"].mean() if ok else np.nan
+    return pd.Series(out, name="season_cpi")
+
+
+def real_factors(cpi, base_year=BASE_YEAR):
+    """Multiplier that turns a season's nominal dollars into `base_year` dollars (1.0 in the base year)."""
+    s = season_cpi(cpi)
+    return (s.loc[base_year] / s).rename("factor")
+
+
+def to_real(obj, factors):
+    """Nominal dollars (a Series or a frame indexed by season year) in constant dollars; NaN where no factor exists."""
+    f = factors.reindex(obj.index)
+    return obj.mul(f) if isinstance(obj, pd.Series) else obj.mul(f, axis=0)
 
 
 def incomplete_years(df, measure, state=None):

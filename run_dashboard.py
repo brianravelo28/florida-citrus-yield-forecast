@@ -15,6 +15,7 @@ os.chdir(Path(__file__).parent)
 required_files = [
     'data/citrus_by_state.csv',
     'data/citrus_totals_by_state.csv',
+    'data/cpi_u_monthly.csv',
 ]
 
 print("Checking required data files...")
